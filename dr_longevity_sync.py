@@ -1,6 +1,6 @@
 """
-Garmin Connect Data Sync - Supabase Version
-Fetches health metrics from Garmin and stores in Supabase cloud database
+Dr. Longevity - Data Sync
+Fetches health metrics from Garmin Connect and stores in Supabase cloud database
 """
 
 import os

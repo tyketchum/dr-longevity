@@ -1,4 +1,4 @@
-name: Sync Garmin Data to Supabase
+name: Dr. Longevity - Automated Data Sync
 
 on:
   # Schedule to run twice daily
@@ -27,7 +27,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install garminconnect garth python-dotenv supabase
 
-      - name: Run Garmin sync
+      - name: Sync health data
         env:
           GARMIN_EMAIL: ${{ secrets.GARMIN_EMAIL }}
           GARMIN_PASSWORD: ${{ secrets.GARMIN_PASSWORD }}
@@ -35,7 +35,7 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SYNC_DAYS: 7  # Only sync last 7 days for scheduled runs
         run: |
-          python3 garmin_sync_supabase.py
+          python3 dr_longevity_sync.py
 
       - name: Notify on failure
         if: failure()

@@ -1,20 +1,24 @@
 """
-Activity Tracking Dashboard
+Dr. Longevity Dashboard
 Track your workouts and fitness progress from Garmin Connect
 """
 
 import streamlit as st
-import sqlite3
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from pathlib import Path
+import os
+from supabase import create_client, Client
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Page configuration
 st.set_page_config(
-    page_title="Activity Dashboard",
-    page_icon="💪",
+    page_title="Dr. Longevity",
+    page_icon="🏃",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -61,68 +65,72 @@ COLORS = {
     'neutral': '#6B7280'
 }
 
-# Database connection
+# Supabase connection
 @st.cache_resource
-def get_database_connection():
-    """Get database connection"""
-    db_path = Path(__file__).parent / "longevity_dashboard.db"
-    return sqlite3.connect(db_path, check_same_thread=False)
+def get_supabase_client():
+    """Get Supabase client"""
+    try:
+        # Try Streamlit secrets first (for cloud deployment)
+        if hasattr(st, 'secrets') and 'supabase' in st.secrets:
+            url = st.secrets["supabase"]["url"]
+            key = st.secrets["supabase"]["key"]
+        else:
+            # Fall back to environment variables
+            url = os.getenv('SUPABASE_URL')
+            key = os.getenv('SUPABASE_KEY')
 
-def get_activities_data(days=90):
-    """Fetch activities data"""
-    conn = get_database_connection()
+        if not url or not key:
+            st.error("❌ Missing Supabase credentials!")
+            st.stop()
+
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"❌ Error connecting to Supabase: {str(e)}")
+        st.stop()
+
+def get_activities_data(supabase: Client, days=90):
+    """Fetch activities data from Supabase"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
 
-    query = """
-    SELECT
-        date,
-        start_time,
-        activity_type,
-        zone_classification,
-        duration_minutes,
-        distance_km,
-        avg_hr,
-        max_hr,
-        calories,
-        avg_power,
-        max_power,
-        workout_name,
-        days_since_previous
-    FROM activities
-    WHERE date >= ?
-    ORDER BY date DESC
-    """
+    try:
+        response = supabase.table('activities')\
+            .select('*')\
+            .gte('date', start_date.date())\
+            .order('date', desc=True)\
+            .execute()
 
-    df = pd.read_sql_query(query, conn, params=(start_date.date(),))
-    if not df.empty:
-        df['date'] = pd.to_datetime(df['date'])
-    return df
+        if response.data:
+            df = pd.DataFrame(response.data)
+            df['date'] = pd.to_datetime(df['date'])
+            return df
+        return pd.DataFrame()
 
-def get_daily_metrics(days=90):
-    """Fetch daily metrics"""
-    conn = get_database_connection()
+    except Exception as e:
+        st.error(f"Error fetching activities: {str(e)}")
+        return pd.DataFrame()
+
+def get_daily_metrics(supabase: Client, days=90):
+    """Fetch daily metrics from Supabase"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
 
-    query = """
-    SELECT
-        date,
-        steps,
-        resting_hr,
-        intensity_minutes,
-        training_load,
-        days_since_last_activity,
-        current_streak
-    FROM daily_metrics
-    WHERE date >= ?
-    ORDER BY date DESC
-    """
+    try:
+        response = supabase.table('daily_metrics')\
+            .select('*')\
+            .gte('date', start_date.date())\
+            .order('date', desc=True)\
+            .execute()
 
-    df = pd.read_sql_query(query, conn, params=(start_date.date(),))
-    if not df.empty:
-        df['date'] = pd.to_datetime(df['date'])
-    return df
+        if response.data:
+            df = pd.DataFrame(response.data)
+            df['date'] = pd.to_datetime(df['date'])
+            return df
+        return pd.DataFrame()
+
+    except Exception as e:
+        st.error(f"Error fetching daily metrics: {str(e)}")
+        return pd.DataFrame()
 
 def safe_int(value, default="N/A"):
     """Safely convert to int, handle NaN"""
@@ -144,7 +152,7 @@ def safe_float(value, decimals=1, default="N/A"):
 
 def main():
     # Header
-    st.title("💪 Activity Tracking Dashboard")
+    st.title("🏃 Dr. Longevity Dashboard")
     st.caption("Track your workouts and fitness progress")
 
     # Sidebar
@@ -165,10 +173,10 @@ def main():
                 try:
                     import subprocess
                     result = subprocess.run(
-                        ["python3", "garmin_sync.py"],
+                        ["python3", "dr_longevity_sync.py"],
                         capture_output=True,
                         text=True,
-                        cwd=Path(__file__).parent
+                        cwd=os.path.dirname(__file__) or '.'
                     )
                     if result.returncode == 0:
                         st.success("✅ Sync complete! Refreshing dashboard...")
@@ -188,10 +196,13 @@ def main():
         st.caption("**About**")
         st.caption("Track your workouts, training patterns, and fitness progress over time.")
 
+    # Get Supabase client
+    supabase = get_supabase_client()
+
     # Load data
     try:
-        activities_df = get_activities_data(days)
-        metrics_df = get_daily_metrics(days)
+        activities_df = get_activities_data(supabase, days)
+        metrics_df = get_daily_metrics(supabase, days)
 
         if activities_df.empty and metrics_df.empty:
             st.warning("📊 No data available. Please sync your Garmin data.")

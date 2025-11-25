@@ -87,7 +87,7 @@ Use GitHub Desktop:
 #### B. Update Streamlit App
 
 1. Go to your Streamlit app settings
-2. Change **Main file path** from `streamlit_dashboard.py` to `streamlit_dashboard_supabase.py`
+2. Change **Main file path** from `streamlit_dashboard.py` to `dr_longevity_dashboard.py`
 3. Click **"Save"**
 4. App will automatically redeploy
 
@@ -104,7 +104,7 @@ Option 2 - Local:
 ```bash
 cd /Users/tketchum/Claude/Garmin
 pip install supabase
-python3 garmin_sync_supabase.py
+python3 dr_longevity_sync.py
 ```
 
 #### D. Verify Dashboard
@@ -134,18 +134,17 @@ Once setup is complete:
 
 ### New Files:
 - `supabase_schema.sql` - Database schema for Supabase
-- `garmin_sync_supabase.py` - Supabase version of sync script
-- `streamlit_dashboard_supabase.py` - Supabase version of dashboard
+- `dr_longevity_sync.py` - Supabase version of sync script
+- `dr_longevity_dashboard.py` - Supabase version of dashboard
 - `.github/workflows/sync_garmin_to_supabase.yml` - Automated sync workflow
 - `SUPABASE_SETUP_INSTRUCTIONS.md` - This file!
 
 ### Modified Files:
 - `requirements.txt` - Added `supabase` library
 
-### Old Files (Keep as Backup):
-- `garmin_sync.py` - SQLite version (backup)
-- `streamlit_dashboard.py` - SQLite version (backup)
-- `longevity_dashboard.db` - Local database (can delete after migration)
+### Legacy Files (Removed):
+- Old SQLite versions have been removed for clarity
+- `longevity_dashboard.db` - Local database (keep until migration complete)
 
 ---
 

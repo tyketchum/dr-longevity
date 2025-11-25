@@ -11,12 +11,12 @@ Everything is ready to go. Here's what I did:
    - Optimized for cloud performance
    - Includes automatic syncing triggers
 
-2. **Updated Sync Script** (`garmin_sync_supabase.py`)
+2. **Updated Sync Script** (`dr_longevity_sync.py`)
    - Connects to Supabase instead of SQLite
    - Syncs both daily summaries AND activities
    - Handles all your Garmin data automatically
 
-3. **Updated Dashboard** (`streamlit_dashboard_supabase.py`)
+3. **Updated Dashboard** (`dr_longevity_dashboard.py`)
    - Reads from Supabase cloud database
    - Same beautiful design, now cloud-powered
    - Still has sync button for manual updates
@@ -46,7 +46,7 @@ Everything is ready to go. Here's what I did:
 - [ ] Copy Supabase URL and API key
 - [ ] Add secrets to Streamlit Cloud
 - [ ] Add secrets to GitHub Actions
-- [ ] Update Streamlit main file to `streamlit_dashboard_supabase.py`
+- [ ] Update Streamlit main file to `dr_longevity_dashboard.py`
 - [ ] Push code to GitHub (use GitHub Desktop)
 - [ ] Run migration script to copy existing data (optional)
 - [ ] Test dashboard!
@@ -60,14 +60,12 @@ Everything is ready to go. Here's what I did:
 - `migrate_sqlite_to_supabase.py` - Copy existing data to Supabase
 
 **New Production Files:**
-- `garmin_sync_supabase.py` - New sync script
-- `streamlit_dashboard_supabase.py` - New dashboard
+- `dr_longevity_sync.py` - New sync script
+- `dr_longevity_dashboard.py` - New dashboard
 - `supabase_schema.sql` - Database schema
 
-**Backup Files (Don't Delete Yet):**
-- `garmin_sync.py` - Old SQLite version
-- `streamlit_dashboard.py` - Old SQLite version
-- `longevity_dashboard.db` - Local database
+**Legacy Database (Keep Until Migration):**
+- `longevity_dashboard.db` - Local database (will migrate to Supabase)
 
 ## 🎯 What Changes After Setup
 
