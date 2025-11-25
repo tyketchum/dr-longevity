@@ -1,6 +1,6 @@
 # Setup Checklist
 
-Follow these steps to get your Longevity Dashboard up and running:
+Follow these steps to get your Longevity App up and running:
 
 ## ✅ Step 1: Install Dependencies
 
@@ -102,7 +102,7 @@ Visit http://localhost:8000/status in your browser - you should see JSON with yo
 
 ---
 
-## ✅ Step 5: Start the Frontend Dashboard
+## ✅ Step 5: Start the Frontend App
 
 In a **new terminal**:
 
@@ -115,7 +115,7 @@ npm start
 ```
 Compiled successfully!
 
-You can now view longevity-dashboard in the browser.
+You can now view longevity-app in the browser.
 
   Local:            http://localhost:3000
 ```
@@ -209,12 +209,12 @@ After changing targets, restart the backend server.
 
 ## 🎉 You're All Set!
 
-Your Longevity Dashboard is now running and tracking your health data.
+Your Longevity App is now running and tracking your health data.
 
 ### Daily Workflow:
 1. Train as usual (Garmin will automatically track)
 2. Run daily sync (manual or automated): `python3 backend/scripts/daily_sync.py`
-3. Check your dashboard for streak status and target achievement
+3. Check your app for streak status and target achievement
 4. Log manual CrossFit workouts in the Activities page
 5. Add lab results as you get them
 
@@ -240,7 +240,7 @@ Most common issues:
 - Garmin authentication fails → Check credentials
 - No data showing → Re-run initial setup script
 - Activities not classified → Check HR zones in `.env`
-- Dashboard won't load → Check backend is running on port 8000
+- App won't load → Check backend is running on port 8000
 
 ---
 

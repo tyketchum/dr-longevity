@@ -16,7 +16,7 @@ Everything is ready to go. Here's what I did:
    - Syncs both daily summaries AND activities
    - Handles all your Garmin data automatically
 
-3. **Updated Dashboard** (`dr_longevity_dashboard.py`)
+3. **Updated App** (`dr_longevity_app.py`)
    - Reads from Supabase cloud database
    - Same beautiful design, now cloud-powered
    - Still has sync button for manual updates
@@ -46,10 +46,10 @@ Everything is ready to go. Here's what I did:
 - [ ] Copy Supabase URL and API key
 - [ ] Add secrets to Streamlit Cloud
 - [ ] Add secrets to GitHub Actions
-- [ ] Update Streamlit main file to `dr_longevity_dashboard.py`
+- [ ] Update Streamlit main file to `dr_longevity_app.py`
 - [ ] Push code to GitHub (use GitHub Desktop)
 - [ ] Run migration script to copy existing data (optional)
-- [ ] Test dashboard!
+- [ ] Test app!
 
 ## 📚 Important Files
 
@@ -61,11 +61,11 @@ Everything is ready to go. Here's what I did:
 
 **New Production Files:**
 - `dr_longevity_sync.py` - New sync script
-- `dr_longevity_dashboard.py` - New dashboard
+- `dr_longevity_app.py` - New app
 - `supabase_schema.sql` - Database schema
 
 **Legacy Database (Keep Until Migration):**
-- `longevity_dashboard.db` - Local database (will migrate to Supabase)
+- `longevity_app.db` - Local database (will migrate to Supabase)
 
 ## 🎯 What Changes After Setup
 
@@ -79,7 +79,7 @@ Everything is ready to go. Here's what I did:
 - ✅ Automatic syncing twice daily
 - ✅ Cloud database (Supabase)
 - ✅ Clean git history (no database file)
-- ✅ Always up-to-date dashboard
+- ✅ Always up-to-date app
 - ✅ Can access from anywhere
 - ✅ Professional cloud architecture
 
@@ -103,7 +103,7 @@ If anything doesn't work:
 
 ## 🎉 You're Almost There!
 
-Just follow the instructions in `SUPABASE_SETUP_INSTRUCTIONS.md` and you'll have a fully automated, cloud-based fitness dashboard in 15 minutes.
+Just follow the instructions in `SUPABASE_SETUP_INSTRUCTIONS.md` and you'll have a fully automated, cloud-based fitness app in 15 minutes.
 
 No more manual syncing. No more database commits. Just automatic, always-up-to-date data!
 

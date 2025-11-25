@@ -1,4 +1,4 @@
-# Longevity Dashboard - Project Overview
+# Longevity App - Project Overview
 
 ## 🎯 Mission
 
@@ -35,7 +35,7 @@ This is your accountability mechanism for the next 65 years.
 ## 📁 Project Structure
 
 ```
-longevity-dashboard/
+longevity-app/
 ├── backend/
 │   ├── models/                 # Database models
 │   │   ├── database.py         # SQLAlchemy setup
@@ -57,8 +57,8 @@ longevity-dashboard/
 │   │   ├── components/         # React components
 │   │   │   ├── ActivityGapAlert.js   # CRITICAL: Days since last activity
 │   │   │   └── StreakCounter.js      # Activity streak with milestones
-│   │   ├── pages/              # Dashboard pages
-│   │   │   ├── CommandCenter.js     # Main dashboard
+│   │   ├── pages/              # App pages
+│   │   │   ├── CommandCenter.js     # Main app
 │   │   │   ├── Activities.js        # Activity log + manual entry
 │   │   │   ├── WeeklyLog.js         # 12-week performance table
 │   │   │   ├── Calendar.js          # Activity heatmap
@@ -209,7 +209,7 @@ User → initial_setup.py
        ↓
    DataSyncService.calculate_weekly_summaries()
        ↓
-   Dashboard shows data ✅
+   App shows data ✅
 ```
 
 ### Daily Sync (Automated)
@@ -226,7 +226,7 @@ Cron job → daily_sync.py (7:00 AM)
            ↓
        Update weekly summary
            ↓
-       User refreshes dashboard → sees updated data
+       User refreshes app → sees updated data
 ```
 
 ### Manual Activity Entry
@@ -239,7 +239,7 @@ User → Activities page → Add CrossFit Workout
        ↓
    DataSyncService.recalculate_all_gaps()
        ↓
-   Dashboard updates automatically
+   App updates automatically
 ```
 
 ### Lab Entry
@@ -416,7 +416,7 @@ Export all data to CSV files
 ## 🔐 Security & Privacy
 
 ### Data Storage
-- **Local SQLite database** (`longevity_dashboard.db`)
+- **Local SQLite database** (`longevity_app.db`)
 - **No cloud sync** (by design)
 - **No analytics** or tracking
 - **User owns 100%** of data
@@ -428,7 +428,7 @@ Export all data to CSV files
 
 ### Backup Strategy
 - **CSV export**: `python3 backend/scripts/export_csv.py`
-- **Database backup**: Copy `longevity_dashboard.db` file
+- **Database backup**: Copy `longevity_app.db` file
 - Recommended: Weekly CSV exports to external drive
 
 ---
@@ -557,7 +557,7 @@ Export all data to CSV files
 **Strategy**: Delay chronic disease onset by 10-20 years
 **Method**: Optimize exercise, nutrition, sleep, emotional health
 
-**This dashboard is your accountability system for the exercise pillar.**
+**This app is your accountability system for the exercise pillar.**
 
 ---
 

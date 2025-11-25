@@ -4,7 +4,7 @@
 
 ✅ Created PostgreSQL database schema for Supabase
 ✅ Updated `garmin_sync.py` to work with Supabase
-✅ Updated `streamlit_dashboard.py` to work with Supabase
+✅ Updated `streamlit_app.py` to work with Supabase
 ✅ Created GitHub Actions workflow for automatic syncing (twice daily)
 ✅ Updated requirements.txt with Supabase library
 
@@ -17,7 +17,7 @@
 3. Sign in with GitHub (easiest)
 4. Create a new organization (name it whatever you want)
 5. Create a new project:
-   - **Name**: `longevity-dashboard` (or whatever you prefer)
+   - **Name**: `longevity-app` (or whatever you prefer)
    - **Database Password**: Create a strong password (save it somewhere safe!)
    - **Region**: Choose closest to you (US East, US West, etc.)
    - Click **"Create new project"**
@@ -87,7 +87,7 @@ Use GitHub Desktop:
 #### B. Update Streamlit App
 
 1. Go to your Streamlit app settings
-2. Change **Main file path** from `streamlit_dashboard.py` to `dr_longevity_dashboard.py`
+2. Change **Main file path** from `streamlit_app.py` to `dr_longevity_app.py`
 3. Click **"Save"**
 4. App will automatically redeploy
 
@@ -107,7 +107,7 @@ pip install supabase
 python3 dr_longevity_sync.py
 ```
 
-#### D. Verify Dashboard
+#### D. Verify App
 
 1. Go to **https://dr-longevity.streamlit.app**
 2. Wait for it to reload
@@ -124,7 +124,7 @@ Once setup is complete:
    - 12:00 AM CST (6 AM UTC)
    - 12:00 PM CST (6 PM UTC)
 
-📊 **Instant Updates**: Your dashboard will always show the latest data from the cloud database
+📊 **Instant Updates**: Your app will always show the latest data from the cloud database
 
 🎯 **No More Manual Work**: Everything runs automatically!
 
@@ -135,7 +135,7 @@ Once setup is complete:
 ### New Files:
 - `supabase_schema.sql` - Database schema for Supabase
 - `dr_longevity_sync.py` - Supabase version of sync script
-- `dr_longevity_dashboard.py` - Supabase version of dashboard
+- `dr_longevity_app.py` - Supabase version of app
 - `.github/workflows/sync_garmin_to_supabase.yml` - Automated sync workflow
 - `SUPABASE_SETUP_INSTRUCTIONS.md` - This file!
 
@@ -144,7 +144,7 @@ Once setup is complete:
 
 ### Legacy Files (Removed):
 - Old SQLite versions have been removed for clarity
-- `longevity_dashboard.db` - Local database (keep until migration complete)
+- `longevity_app.db` - Local database (keep until migration complete)
 
 ---
 
@@ -158,9 +158,9 @@ Once setup is complete:
 - Make sure you ran the entire `supabase_schema.sql` file
 - Check Supabase SQL Editor for any error messages
 
-### "No data showing in dashboard"
+### "No data showing in app"
 - Run the GitHub Actions workflow manually to do initial sync
-- Or click "Sync Garmin Data" button in dashboard sidebar
+- Or click "Sync Garmin Data" button in app sidebar
 - Check that your Garmin credentials are correct
 
 ### GitHub Actions failing
@@ -173,7 +173,7 @@ Once setup is complete:
 
 1. **Delete local database from git** (optional):
    ```bash
-   git rm longevity_dashboard.db
+   git rm longevity_app.db
    git commit -m "Remove local database, using Supabase"
    git push
    ```
@@ -183,7 +183,7 @@ Once setup is complete:
    - Go to Actions tab to see if workflow ran successfully
 
 3. **Celebrate!** 🎉
-   - You now have a fully automated cloud-based dashboard
+   - You now have a fully automated cloud-based app
    - No more manual syncing or database commits
 
 ---
@@ -201,4 +201,4 @@ If anything doesn't work:
 
 **Estimated total time**: 15 minutes
 **Difficulty**: Easy (just copying and pasting!)
-**Result**: Fully automated cloud dashboard! 🚀
+**Result**: Fully automated cloud app! 🚀

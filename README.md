@@ -1,6 +1,6 @@
-# Longevity Dashboard - Medicine 3.0 Health Tracking System
+# Longevity App - Medicine 3.0 Health Tracking System
 
-A comprehensive performance monitoring dashboard for longevity optimization, integrating Garmin Connect wellness data with CrossFit/strength training tracking. Built for Peter Attia-style Medicine 3.0 health optimization.
+A comprehensive performance monitoring app for longevity optimization, integrating Garmin Connect wellness data with CrossFit/strength training tracking. Built for Peter Attia-style Medicine 3.0 health optimization.
 
 ## 🎯 Key Features
 
@@ -125,7 +125,7 @@ python3 backend/main.py
 
 API will run on `http://localhost:8000`
 
-### 6. Start the Frontend Dashboard
+### 6. Start the Frontend App
 
 In a new terminal:
 
@@ -134,7 +134,7 @@ cd frontend
 npm start
 ```
 
-Dashboard will open at `http://localhost:3000`
+App will open at `http://localhost:3000`
 
 ## 📅 Daily Sync
 
@@ -244,10 +244,10 @@ If Garmin login fails:
 3. Check your email/password in `.env`
 4. Ensure you don't have 2FA enabled on Garmin (not currently supported)
 
-### No Data Showing in Dashboard
+### No Data Showing in App
 
 1. Check backend is running: `http://localhost:8000/status`
-2. Check database was created: `ls -la longevity_dashboard.db`
+2. Check database was created: `ls -la longevity_app.db`
 3. Re-run initial sync: `python3 backend/scripts/initial_setup.py`
 
 ### Activities Not Classified Correctly
@@ -280,7 +280,7 @@ PushPress API is available but requires an API key from your gym. If unavailable
 ├── frontend/
 │   ├── src/
 │   │   ├── components/   # React components (alerts, streak counter)
-│   │   ├── pages/        # Dashboard pages
+│   │   ├── pages/        # App pages
 │   │   └── services/     # API client
 │   └── package.json
 ├── .env.example          # Environment variables template
@@ -290,7 +290,7 @@ PushPress API is available but requires an API key from your gym. If unavailable
 
 ## 🔒 Data Privacy
 
-- All data stored locally in SQLite database (`longevity_dashboard.db`)
+- All data stored locally in SQLite database (`longevity_app.db`)
 - No cloud services or third-party analytics
 - Garmin tokens stored in `~/.garmin_tokens/` (excluded from git)
 - You own 100% of your health data

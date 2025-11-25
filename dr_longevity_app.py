@@ -1,5 +1,5 @@
 """
-Dr. Longevity Dashboard
+Dr. Longevity App
 Track your workouts and fitness progress from Garmin Connect
 """
 
@@ -152,7 +152,7 @@ def safe_float(value, decimals=1, default="N/A"):
 
 def main():
     # Header
-    st.title("🏃 Dr. Longevity Dashboard")
+    st.title("🏃 Dr. Longevity App")
     st.caption("Track your workouts and fitness progress")
 
     # Sidebar
@@ -179,7 +179,7 @@ def main():
                         cwd=os.path.dirname(__file__) or '.'
                     )
                     if result.returncode == 0:
-                        st.success("✅ Sync complete! Refreshing dashboard...")
+                        st.success("✅ Sync complete! Refreshing app...")
                         st.cache_data.clear()
                         st.rerun()
                     else:
@@ -187,7 +187,7 @@ def main():
                 except Exception as e:
                     st.error(f"❌ Error running sync: {str(e)}")
 
-        if st.button("🔄 Refresh Dashboard", use_container_width=True):
+        if st.button("🔄 Refresh App", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
 

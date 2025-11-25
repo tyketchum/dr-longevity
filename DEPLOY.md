@@ -1,6 +1,6 @@
 # Deploying to Streamlit Community Cloud 🚀
 
-Your Longevity Dashboard can be deployed for FREE on Streamlit Community Cloud!
+Your Longevity App can be deployed for FREE on Streamlit Community Cloud!
 
 ## Prerequisites
 
@@ -25,7 +25,7 @@ Click "Sign in with GitHub" and authorize Streamlit.
 
 1. Click **"New app"**
 2. Select your repository: `Claude/Garmin` (or wherever this code is)
-3. Set the main file path: `streamlit_dashboard.py`
+3. Set the main file path: `streamlit_app.py`
 4. Click **"Deploy!"**
 
 ### 5. Add Your Secrets
@@ -46,21 +46,21 @@ password = "your_password"
 
 ### 6. That's It!
 
-Your dashboard is now live! 🎉
+Your app is now live! 🎉
 
 You'll get a URL like: `https://your-app-name.streamlit.app`
 
-## Updating Your Dashboard
+## Updating Your App
 
 Whenever you push changes to GitHub, Streamlit will automatically redeploy your app!
 
 ## Adding a Sync Button
 
-The dashboard includes a "Sync Garmin Data" button in the sidebar. Click it to fetch fresh data from Garmin Connect.
+The app includes a "Sync Garmin Data" button in the sidebar. Click it to fetch fresh data from Garmin Connect.
 
-## Sharing Your Dashboard
+## Sharing Your App
 
-Your dashboard URL can be shared with anyone! They'll be able to view your health data (if that's what you want).
+Your app URL can be shared with anyone! They'll be able to view your health data (if that's what you want).
 
 To make it private:
 1. Go to app settings
@@ -71,7 +71,7 @@ To make it private:
 **App won't start?**
 - Check that `requirements_streamlit.txt` is in the repo
 - Verify your secrets are set correctly
-- Check the logs in the Streamlit Cloud dashboard
+- Check the logs in the Streamlit Cloud app
 
 **Database empty?**
 - Click the "Sync Garmin Data" button in the sidebar
@@ -96,8 +96,8 @@ cp .streamlit/secrets.toml.example .streamlit/secrets.toml
 # Sync Garmin data
 python garmin_sync.py
 
-# Run dashboard
-streamlit run streamlit_dashboard.py
+# Run app
+streamlit run streamlit_app.py
 ```
 
-Your dashboard will open at http://localhost:8501
+Your app will open at http://localhost:8501

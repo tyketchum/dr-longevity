@@ -12,7 +12,7 @@
 **Cloud Setup (Option B)**:
 - ✅ Fully automatic syncing
 - ✅ No manual intervention needed
-- ✅ Database updates instantly reflect on dashboard
+- ✅ Database updates instantly reflect on app
 - ✅ Clean git history (no database file)
 - ✅ Can schedule syncs (every hour, twice daily, etc.)
 
@@ -97,7 +97,7 @@
    - Add to Streamlit Cloud secrets
    - Add to GitHub Actions secrets (for automation)
 
-### Phase 3: Update streamlit_dashboard.py (15 mins)
+### Phase 3: Update streamlit_app.py (15 mins)
 
 1. **Connect to Supabase instead of SQLite**
    ```python
@@ -121,7 +121,7 @@
      df = pd.DataFrame(response.data)
      ```
 
-3. **Test dashboard locally**
+3. **Test app locally**
    - Run streamlit locally
    - Verify all data loads correctly
    - Check all visualizations work
@@ -171,18 +171,18 @@ jobs:
    - Remove local database file from git
 
 2. **Push changes to GitHub**
-   - Dashboard automatically redeploys
-   - Verify dashboard loads
+   - App automatically redeploys
+   - Verify app loads
    - Check all data displays correctly
 
 3. **Trigger first automated sync**
    - Run GitHub Action manually
    - Verify data appears in Supabase
-   - Verify dashboard updates
+   - Verify app updates
 
 4. **Remove database file from git**
    ```bash
-   git rm longevity_dashboard.db
+   git rm longevity_app.db
    git commit -m "Remove local database, now using Supabase"
    ```
 
@@ -195,8 +195,8 @@ jobs:
 - [ ] Create database tables (match current schema)
 - [ ] Test connection with Python
 - [ ] Update `garmin_sync.py` to use Supabase
-- [ ] Update `streamlit_dashboard.py` to use Supabase
-- [ ] Test dashboard locally
+- [ ] Update `streamlit_app.py` to use Supabase
+- [ ] Test app locally
 - [ ] Add secrets to Streamlit Cloud
 - [ ] Create GitHub Actions workflow
 - [ ] Add secrets to GitHub Actions
@@ -210,8 +210,8 @@ jobs:
 ## Rollback Plan
 
 If something goes wrong:
-1. Keep current `streamlit_dashboard.py` as `streamlit_dashboard_sqlite.py`
-2. Keep `longevity_dashboard.db` locally as backup
+1. Keep current `streamlit_app.py` as `streamlit_app_sqlite.py`
+2. Keep `longevity_app.db` locally as backup
 3. Can revert to SQLite version anytime
 4. Supabase has automatic backups (daily on free tier)
 
@@ -231,7 +231,7 @@ If something goes wrong:
 ## Key Benefits After Migration
 
 1. **True automation**: Data syncs twice daily without any action
-2. **Instant updates**: Dashboard always shows latest data
+2. **Instant updates**: App always shows latest data
 3. **Clean git history**: No more database commits
 4. **Scalable**: Can add more features easily
 5. **Professional**: Production-ready architecture
@@ -249,7 +249,7 @@ If something goes wrong:
    - Current: 30-90 days
    - Supabase free: Can store years of data (500 MB is plenty)
 
-3. **Privacy**: Who can access your dashboard?
+3. **Privacy**: Who can access your app?
    - Public URL (anyone with link)
    - Password protected (Streamlit feature)
    - Fully private (VPN or local only)

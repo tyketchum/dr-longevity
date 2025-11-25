@@ -2,7 +2,7 @@
 
 ## 🚀 Quick Commands
 
-### Start Dashboard
+### Start App
 ```bash
 ./start.sh
 ```
@@ -96,7 +96,7 @@ Activities are auto-classified based on heart rate and duration:
 
 ---
 
-## 🔍 Dashboard Pages Quick Guide
+## 🔍 App Pages Quick Guide
 
 ### Command Center (Home)
 - **BIG ALERT**: Days since last activity (your accountability mechanism)
@@ -151,7 +151,7 @@ Visit http://localhost:8000/status (JSON API response) or just look at Command C
 ```bash
 python3 backend/scripts/daily_sync.py
 ```
-Then refresh dashboard in browser.
+Then refresh app in browser.
 
 ### Export Your Data
 ```bash
@@ -177,7 +177,7 @@ Files saved to `backups/export_TIMESTAMP/`
 
 ## 📱 Mobile Usage
 
-Dashboard is mobile-responsive! Access from phone:
+App is mobile-responsive! Access from phone:
 
 1. Find your computer's local IP: `ifconfig` (Mac/Linux) or `ipconfig` (Windows)
 2. On phone browser: `http://YOUR_IP:3000`
@@ -209,7 +209,7 @@ Tips to maintain consistency:
    - 20min walk/jog
    - 15min bodyweight circuit
    - 30min bike ride
-4. Check dashboard EVERY morning (accountability!)
+4. Check app EVERY morning (accountability!)
 5. Use yellow alert (day 1-2) as trigger to train TODAY
 6. Never let red alert appear!
 
@@ -219,7 +219,7 @@ Tips to maintain consistency:
 
 ## 🎯 Medicine 3.0 Philosophy
 
-This dashboard is built on Peter Attia's Medicine 3.0 framework:
+This app is built on Peter Attia's Medicine 3.0 framework:
 
 **Medicine 1.0**: Treat disease after it occurs
 **Medicine 2.0**: Prevent disease with screenings
