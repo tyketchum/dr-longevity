@@ -160,6 +160,25 @@ def main():
 
         st.divider()
 
+        if st.button("📥 Sync Garmin Data", use_container_width=True, type="primary"):
+            with st.spinner("Syncing data from Garmin Connect..."):
+                try:
+                    import subprocess
+                    result = subprocess.run(
+                        ["python3", "garmin_sync.py"],
+                        capture_output=True,
+                        text=True,
+                        cwd=Path(__file__).parent
+                    )
+                    if result.returncode == 0:
+                        st.success("✅ Sync complete! Refreshing dashboard...")
+                        st.cache_data.clear()
+                        st.rerun()
+                    else:
+                        st.error(f"❌ Sync failed: {result.stderr}")
+                except Exception as e:
+                    st.error(f"❌ Error running sync: {str(e)}")
+
         if st.button("🔄 Refresh Dashboard", use_container_width=True):
             st.cache_data.clear()
             st.rerun()
