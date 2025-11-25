@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Get the app's directory
+APP_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd ../../.. && pwd )"
+PROJECT_DIR="$(dirname "$APP_DIR")"
+
+# Create log directory
+LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+
+# Log files
+BACKEND_LOG="$LOG_DIR/backend.log"
+FRONTEND_LOG="$LOG_DIR/frontend.log"
+
+# Clear old logs
+> "$BACKEND_LOG"
+> "$FRONTEND_LOG"
+
+# Check if servers are already running
+if lsof -ti:8000 > /dev/null 2>&1; then
+    echo "Backend already running on port 8000, opening dashboard..."
+    open http://localhost:3000
+    exit 0
+fi
+
+# Start backend in background
+cd "$PROJECT_DIR"
+echo "Starting backend server..." > "$BACKEND_LOG"
+python3 backend/main.py >> "$BACKEND_LOG" 2>&1 &
+BACKEND_PID=$!
+
+# Wait for backend to start
+sleep 3
+
+# Check if backend started successfully
+if ! kill -0 $BACKEND_PID 2>/dev/null; then
+    osascript -e 'display notification "Failed to start backend server. Check logs." with title "Longevity Dashboard"'
+    exit 1
+fi
+
+# Start frontend in background
+cd "$PROJECT_DIR/frontend"
+echo "Starting frontend server..." > "$FRONTEND_LOG"
+npm start >> "$FRONTEND_LOG" 2>&1 &
+FRONTEND_PID=$!
+
+# Wait for frontend to be ready (poll until it responds)
+MAX_ATTEMPTS=60  # 60 seconds max
+ATTEMPT=0
+until curl -s http://localhost:3000 > /dev/null 2>&1; do
+    ATTEMPT=$((ATTEMPT + 1))
+    if [ $ATTEMPT -ge $MAX_ATTEMPTS ]; then
+        osascript -e 'display notification "Frontend failed to start. Check logs." with title "Longevity Dashboard"'
+        kill $BACKEND_PID 2>/dev/null
+        exit 1
+    fi
+    sleep 1
+done
+
+# Show success notification
+osascript -e 'display notification "Dashboard is ready!" with title "Longevity Dashboard"'
+
+# Open in default browser
+open http://localhost:3000
+
+# Keep the app "running" in the background
+# This creates a small background process so the app appears in the Dock
+while kill -0 $BACKEND_PID 2>/dev/null && kill -0 $FRONTEND_PID 2>/dev/null; do
+    sleep 5
+done
