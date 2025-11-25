@@ -83,7 +83,8 @@ COLORS = {
 @st.cache_resource
 def get_database_connection():
     """Get database connection with caching"""
-    db_path = Path("/Users/tketchum/Claude/Garmin/longevity_dashboard.db")
+    # Use relative path that works both locally and in cloud
+    db_path = Path(__file__).parent / "longevity_dashboard.db"
     return sqlite3.connect(db_path, check_same_thread=False)
 
 def get_data(days=30):
