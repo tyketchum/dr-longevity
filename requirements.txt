@@ -5,3 +5,4 @@ plotly
 garminconnect
 garth
 python-dotenv
+supabase
