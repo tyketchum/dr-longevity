@@ -238,8 +238,11 @@ def main():
             )
 
         with col2:
-            sleep_total = (latest['deep_sleep_seconds'] + latest['light_sleep_seconds'] +
-                          latest['rem_sleep_seconds']) / 3600
+            # Calculate sleep total with null handling
+            deep = latest['deep_sleep_seconds'] if pd.notna(latest['deep_sleep_seconds']) else 0
+            light = latest['light_sleep_seconds'] if pd.notna(latest['light_sleep_seconds']) else 0
+            rem = latest['rem_sleep_seconds'] if pd.notna(latest['rem_sleep_seconds']) else 0
+            sleep_total = (deep + light + rem) / 3600
             sleep_val = f"{sleep_total:.1f}h" if sleep_total > 0 else "N/A"
             create_metric_card(
                 "Sleep",
