@@ -1,29 +1,7 @@
-# Garmin Connect API
-garminconnect>=0.2.13
-
-# PushPress API
-requests>=2.31.0
-
-# Database
-sqlalchemy>=2.0.23
-
-# Web Framework
-fastapi>=0.104.1
-uvicorn>=0.24.0
-python-multipart>=0.0.6
-
-# Environment
-python-dotenv>=1.0.0
-
-# Scheduling
-schedule>=1.2.0
-
-# Data processing
-pandas>=2.1.3
-numpy>=1.26.2
-
-# Date handling
-python-dateutil>=2.8.2
-
-# CORS
-fastapi-cors>=0.0.6
+# Streamlit Dashboard
+streamlit
+pandas
+plotly
+garminconnect
+garth
+python-dotenv
