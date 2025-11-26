@@ -947,56 +947,54 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
                             st.caption(f"📍 Showing {len(routes)} routes • Sampled {len(sampled_coords):,} of {len(all_coords):,} GPS points")
 
                         with col2:
-                            st.subheader("🗺️ Riding Zones")
+                            st.markdown("### 🗺️ Riding Zones")
 
                             # Sort locations by total rides
                             sorted_locs = sorted(
                                 location_stats.items(),
                                 key=lambda x: sum([x[1]['road'], x[1]['gravel'], x[1]['mtb'], x[1]['other']]),
                                 reverse=True
-                            )[:8]  # Top 8
+                            )[:6]  # Top 6
 
                             # Fun emoji mapping
                             def get_zone_emoji(location, stats):
-                                total = sum([stats['road'], stats['gravel'], stats['mtb'], stats['other']])
-
-                                # Special locations
                                 if 'Fort Worth' in location:
-                                    if stats['gravel'] > stats['road']:
-                                        return '🪨'  # Gravel warrior
-                                    return '🏙️'  # City streets
+                                    return '🪨' if stats['gravel'] > stats['road'] else '🏙️'
                                 elif 'North Richland Hills' in location:
-                                    return '🏡'  # Home base
+                                    return '🏡'
                                 elif 'Stillwater' in location:
-                                    return '🌾'  # Oklahoma gravel
+                                    return '🌾'
                                 elif 'Boulder' in location:
-                                    return '🏔️'  # Mountain town
+                                    return '🏔️'
                                 elif 'Keller' in location:
-                                    return '🛣️'  # Road riding
+                                    return '🛣️'
                                 elif 'Bartlesville' in location:
-                                    return '🌳'  # Tree-lined roads
-                                else:
-                                    return '🚴'  # Default
+                                    return '🌳'
+                                return '🚴'
 
                             def get_ride_style(stats):
                                 if stats['gravel'] > stats['road']:
                                     return "Gravel Hunter"
                                 elif stats['road'] > stats['gravel']:
                                     return "Pavement Surfer"
-                                else:
-                                    return "Mixed Terrain"
+                                return "Mixed Terrain"
 
-                            # Display as cards
+                            # Compact table display
                             for location, stats in sorted_locs:
                                 total_rides = sum([stats['road'], stats['gravel'], stats['mtb'], stats['other']])
                                 emoji = get_zone_emoji(location, stats)
                                 style = get_ride_style(stats)
+                                total_miles = stats['total_distance'] * 0.621371  # km to miles
 
-                                with st.container():
-                                    st.markdown(f"**{emoji} {location}**")
-                                    st.metric("Rides", total_rides, help=style)
-                                    st.caption(f"🛣️ {stats['road']} • 🪨 {stats['gravel']} • {stats['total_distance']:.0f}km")
-                                    st.divider()
+                                # Shorten location name if needed
+                                display_loc = location.replace('Fort Worth -', 'FW').replace('North Richland Hills', 'NRH')
+
+                                st.markdown(f"""
+                                <div style='padding: 8px 0; border-bottom: 1px solid #333;'>
+                                    <div style='font-size: 14px; font-weight: 600;'>{emoji} {display_loc}</div>
+                                    <div style='font-size: 12px; color: #888; margin-top: 2px;'>{style} • {total_rides} rides • {total_miles:.0f}mi</div>
+                                </div>
+                                """, unsafe_allow_html=True)
                     else:
                         st.info("GPS data fetched but no coordinates available")
                 else:
