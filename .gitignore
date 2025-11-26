@@ -51,3 +51,4 @@ Thumbs.db
 backups/
 *.csv.backup
 .archive/
+cycling_routes.json

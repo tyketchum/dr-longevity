@@ -868,12 +868,24 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
         st.divider()
         st.header("🗺️ Cycling Routes")
 
-        # Check for GPS data
-        gps_file = 'cycling_routes.json'
-        if os.path.exists(gps_file):
+        # Check for GPS data (split into multiple files to stay under GitHub's 100MB limit)
+        routes = []
+        part_num = 1
+        while True:
+            gps_file = f'cycling_routes_part{part_num}.json' if part_num > 0 else 'cycling_routes.json'
+            if os.path.exists(gps_file):
+                try:
+                    with open(gps_file, 'r') as f:
+                        part_routes = json.load(f)
+                        routes.extend(part_routes)
+                    part_num += 1
+                except Exception:
+                    break
+            else:
+                break
+
+        if routes:
             try:
-                with open(gps_file, 'r') as f:
-                    routes = json.load(f)
 
                 if routes and len(routes) > 0:
                     # Create heatmap
