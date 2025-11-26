@@ -101,12 +101,13 @@ def parse_strava_activity(activity, streams=None):
 
     activity_data = {
         'date': date.isoformat(),
-        'name': activity['name'],
+        'workout_name': activity['name'],
         'activity_type': activity['type'].lower(),
         'duration_minutes': int(activity['moving_time'] / 60) if activity.get('moving_time') else 0,
         'distance_km': round(activity['distance'] / 1000, 2) if activity.get('distance') else None,
         'elevation_gain': int(activity['total_elevation_gain']) if activity.get('total_elevation_gain') else None,
         'calories': int(activity['kilojoules']) if activity.get('kilojoules') else None,
+        'source': 'strava',
     }
 
     # Power data
@@ -198,7 +199,7 @@ def sync_from_strava(days=7, activity_id=None):
                 activity_data = parse_strava_activity(activity_details)
 
                 # Check if this activity exists in Supabase
-                existing = supabase.table('activities').select('*').eq('date', activity_data['date']).eq('name', activity_data['name']).execute()
+                existing = supabase.table('activities').select('*').eq('date', activity_data['date']).eq('workout_name', activity_data['workout_name']).execute()
 
                 if existing.data:
                     # Check if power data is missing

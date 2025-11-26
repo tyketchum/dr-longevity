@@ -36,28 +36,28 @@ class CallbackHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(b"""
+            self.wfile.write("""
                 <html>
                 <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: #FC4C02;">Success! ✅</h1>
+                    <h1 style="color: #FC4C02;">Success!</h1>
                     <p>You've authorized Dr. Longevity to access your Strava data.</p>
                     <p>You can close this window and return to the terminal.</p>
                 </body>
                 </html>
-            """)
+            """.encode('utf-8'))
         else:
             # Send error response
             self.send_response(400)
             self.send_header('Content-type', 'text/html')
             self.end_headers()
-            self.wfile.write(b"""
+            self.wfile.write("""
                 <html>
                 <body style="font-family: Arial; text-align: center; padding: 50px;">
-                    <h1 style="color: red;">Error ❌</h1>
+                    <h1 style="color: red;">Error</h1>
                     <p>Authorization failed. Please try again.</p>
                 </body>
                 </html>
-            """)
+            """.encode('utf-8'))
 
     def log_message(self, format, *args):
         """Suppress server logs"""
