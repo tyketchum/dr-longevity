@@ -933,10 +933,6 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
 
                         with col1:
                             # Center map on recent riding area (last 30 days of rides)
-<<<<<<< HEAD
-=======
-                            from datetime import datetime, timedelta
->>>>>>> 441ebfdd81a5f8c6498cb8f7a2ee01398813578e
                             recent_cutoff = datetime.now() - timedelta(days=30)
 
                             recent_coords = []
