@@ -36,10 +36,17 @@ def migrate_table(sqlite_conn, supabase: Client, table_name: str):
         # Convert DataFrame to list of dicts
         records = df.to_dict('records')
 
-        # Clean up records (remove None values, convert timestamps)
+        # Clean up records (remove None values, convert types)
         cleaned_records = []
         for record in records:
-            cleaned = {k: v for k, v in record.items() if pd.notna(v)}
+            cleaned = {}
+            for k, v in record.items():
+                if pd.notna(v):
+                    # Convert float to int for integer fields
+                    if isinstance(v, float) and v == int(v):
+                        cleaned[k] = int(v)
+                    else:
+                        cleaned[k] = v
             cleaned_records.append(cleaned)
 
         # Batch insert to Supabase (in chunks of 100)

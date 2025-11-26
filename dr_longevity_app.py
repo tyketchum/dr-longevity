@@ -281,13 +281,27 @@ def main():
                 # Recent activities table
                 st.subheader("Workout Log")
                 display_df = activities_df.head(10).copy()
-                display_df['Duration'] = display_df['duration_minutes'].apply(lambda x: f"{safe_int(x)} min")
+
+                # Format duration as hours and minutes
+                def format_duration(minutes):
+                    if pd.notna(minutes) and minutes > 0:
+                        mins = int(minutes)
+                        if mins >= 60:
+                            hours = mins // 60
+                            remaining_mins = mins % 60
+                            return f"{hours}h {remaining_mins}m"
+                        else:
+                            return f"{mins}m"
+                    return "-"
+
+                display_df['Duration'] = display_df['duration_minutes'].apply(format_duration)
                 display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{safe_float(x)} km" if pd.notna(x) and x > 0 else "-")
                 display_df['Avg HR'] = display_df['avg_hr'].apply(lambda x: f"{safe_int(x)} bpm" if pd.notna(x) else "-")
+                display_df['Avg Power'] = display_df['avg_power'].apply(lambda x: f"{safe_int(x)} W" if pd.notna(x) else "-")
                 display_df['Calories'] = display_df['calories'].apply(lambda x: safe_int(x))
 
                 st.dataframe(
-                    display_df[['date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Calories', 'workout_name']],
+                    display_df[['date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
                     use_container_width=True,
                     hide_index=True
                 )
