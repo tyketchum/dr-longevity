@@ -152,7 +152,7 @@ def safe_float(value, decimals=1, default="N/A"):
 
 def main():
     # Header
-    st.title("🏃 Dr. Longevity App")
+    st.title("🚴 Dr. Longevity")
     st.caption("Track your workouts and fitness progress")
 
     # Sidebar
