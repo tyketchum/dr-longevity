@@ -904,19 +904,99 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
 
                         st.info(f"⏳ Rendering heatmap with {len(sampled_coords):,} GPS points (sampled from {len(all_coords):,} total points)...")
 
-                        # Create map centered on average location
-                        avg_lat = sum(coord[0] for coord in sampled_coords) / len(sampled_coords)
-                        avg_lon = sum(coord[1] for coord in sampled_coords) / len(sampled_coords)
+                        # Analyze riding locations
+                        from collections import defaultdict
+                        location_stats = defaultdict(lambda: {'road': 0, 'gravel': 0, 'mtb': 0, 'other': 0, 'total_distance': 0})
 
-                        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+                        for route in routes:
+                            name = route.get('name', '')
+                            distance = route.get('distance_km', 0)
 
-                        # Add heatmap layer with optimized parameters
-                        HeatMap(sampled_coords, radius=15, blur=25, max_zoom=13).add_to(m)
+                            # Extract location
+                            location = name.split(' Road Cycling')[0].split(' Gravel')[0].split(' Cycling')[0].split(' Mountain')[0]
 
-                        # Display map
-                        folium_static(m, width=800, height=600)
+                            # Determine ride type
+                            if 'Road Cycling' in name or 'Road Biking' in name:
+                                ride_type = 'road'
+                            elif 'Gravel' in name or 'Unpaved' in name:
+                                ride_type = 'gravel'
+                            elif 'Mountain' in name:
+                                ride_type = 'mtb'
+                            else:
+                                ride_type = 'other'
 
-                        st.caption(f"📍 Showing {len(routes)} routes • Sampled {len(sampled_coords):,} of {len(all_coords):,} GPS points for optimal performance")
+                            location_stats[location][ride_type] += 1
+                            location_stats[location]['total_distance'] += distance
+
+                        # Create two columns: map and stats
+                        col1, col2 = st.columns([2, 1])
+
+                        with col1:
+                            # Create map centered on average location
+                            avg_lat = sum(coord[0] for coord in sampled_coords) / len(sampled_coords)
+                            avg_lon = sum(coord[1] for coord in sampled_coords) / len(sampled_coords)
+
+                            m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+
+                            # Add heatmap layer with optimized parameters
+                            HeatMap(sampled_coords, radius=15, blur=25, max_zoom=13).add_to(m)
+
+                            # Display map
+                            folium_static(m, width=700, height=600)
+
+                            st.caption(f"📍 Showing {len(routes)} routes • Sampled {len(sampled_coords):,} of {len(all_coords):,} GPS points")
+
+                        with col2:
+                            st.subheader("🗺️ Riding Zones")
+
+                            # Sort locations by total rides
+                            sorted_locs = sorted(
+                                location_stats.items(),
+                                key=lambda x: sum([x[1]['road'], x[1]['gravel'], x[1]['mtb'], x[1]['other']]),
+                                reverse=True
+                            )[:8]  # Top 8
+
+                            # Fun emoji mapping
+                            def get_zone_emoji(location, stats):
+                                total = sum([stats['road'], stats['gravel'], stats['mtb'], stats['other']])
+
+                                # Special locations
+                                if 'Fort Worth' in location:
+                                    if stats['gravel'] > stats['road']:
+                                        return '🪨'  # Gravel warrior
+                                    return '🏙️'  # City streets
+                                elif 'North Richland Hills' in location:
+                                    return '🏡'  # Home base
+                                elif 'Stillwater' in location:
+                                    return '🌾'  # Oklahoma gravel
+                                elif 'Boulder' in location:
+                                    return '🏔️'  # Mountain town
+                                elif 'Keller' in location:
+                                    return '🛣️'  # Road riding
+                                elif 'Bartlesville' in location:
+                                    return '🌳'  # Tree-lined roads
+                                else:
+                                    return '🚴'  # Default
+
+                            def get_ride_style(stats):
+                                if stats['gravel'] > stats['road']:
+                                    return "Gravel Hunter"
+                                elif stats['road'] > stats['gravel']:
+                                    return "Pavement Surfer"
+                                else:
+                                    return "Mixed Terrain"
+
+                            # Display as cards
+                            for location, stats in sorted_locs:
+                                total_rides = sum([stats['road'], stats['gravel'], stats['mtb'], stats['other']])
+                                emoji = get_zone_emoji(location, stats)
+                                style = get_ride_style(stats)
+
+                                with st.container():
+                                    st.markdown(f"**{emoji} {location}**")
+                                    st.metric("Rides", total_rides, help=style)
+                                    st.caption(f"🛣️ {stats['road']} • 🪨 {stats['gravel']} • {stats['total_distance']:.0f}km")
+                                    st.divider()
                     else:
                         st.info("GPS data fetched but no coordinates available")
                 else:
