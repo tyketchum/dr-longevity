@@ -1188,17 +1188,14 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
                     st.info("""
                     **🚴 GPS Route Data Not Available**
 
-                    Your cycling activities are synced from **Peloton → Strava → Garmin**,
-                    which doesn't include GPS coordinates since Peloton workouts are indoors.
+                    To load GPS route data from your Garmin Edge 1040 Solar rides:
 
-                    **Your riding locations** (from activity names):
-                    - 🏡 North Richland Hills (most rides)
-                    - 🏔️ Boulder, CO (some rides)
+                    Run: `python3 fetch_gps_routes.py`
 
-                    To enable route heatmaps in the future:
-                    - Use a GPS-enabled bike computer for outdoor rides
-                    - Manually upload GPX files to Garmin Connect
-                    - Connect a device that records GPS tracks
+                    This will download GPX files from Garmin Connect for all outdoor cycling activities
+                    and create a heatmap of your routes.
+
+                    **Note:** Peloton rides don't have GPS data (indoor workouts).
                     """)
 
                     # Show location breakdown from activity names
@@ -1226,11 +1223,11 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
             st.info("""
             **🚴 GPS Route Data Not Available**
 
-            Your cycling activities are synced from **Peloton → Strava → Garmin**,
-            which doesn't include GPS coordinates since Peloton workouts are indoors.
+            To load GPS route data from your Garmin Edge 1040 Solar rides:
 
-            To enable route heatmaps, run: `python3 fetch_gps_routes.py`
-            (Note: This will only work if you have outdoor rides with GPS data in Garmin Connect)
+            Run: `python3 fetch_gps_routes.py`
+
+            This will download GPX files from Garmin Connect for all outdoor cycling activities.
             """)
 
         # Footer

@@ -1,9 +1,11 @@
 """
 Fetch GPS route data from Garmin Connect for outdoor cycling activities
+Downloads GPX files and parses full GPS tracks
 """
 
 import os
 import json
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from garminconnect import Garmin
@@ -11,14 +13,38 @@ from garth.exc import GarthHTTPError
 
 load_dotenv()
 
+def parse_gpx(gpx_bytes):
+    """Parse GPX file and extract GPS coordinates"""
+    try:
+        # Parse the GPX XML
+        root = ET.fromstring(gpx_bytes)
+
+        # GPX namespace
+        ns = {'gpx': 'http://www.topografix.com/GPX/1/1'}
+
+        coordinates = []
+
+        # Find all trackpoints in the GPX file
+        for trkpt in root.findall('.//gpx:trkpt', ns):
+            lat = float(trkpt.get('lat'))
+            lon = float(trkpt.get('lon'))
+            coordinates.append([lat, lon])
+
+        return coordinates
+    except Exception as e:
+        print(f"     ⚠️  Error parsing GPX: {e}")
+        return []
+
+
 def fetch_cycling_routes(days=180, limit=50):
-    """Fetch GPS coordinates from recent outdoor cycling activities"""
+    """Fetch GPS coordinates from recent outdoor cycling activities by downloading GPX files"""
 
     print("🔐 Logging into Garmin Connect...")
     garmin = Garmin(os.getenv('GARMIN_EMAIL'), os.getenv('GARMIN_PASSWORD'))
     garmin.login()
+    print("✅ Connected to Garmin Connect")
 
-    print(f"📡 Fetching cycling activities from last {days} days...")
+    print(f"\n📡 Fetching cycling activities from last {days} days...")
     start_date = (datetime.now() - timedelta(days=days)).date()
     activities = garmin.get_activities_by_date(
         start_date.isoformat(),
@@ -40,57 +66,32 @@ def fetch_cycling_routes(days=180, limit=50):
         activity_id = activity.get('activityId')
         activity_name = activity.get('activityName', 'Unknown')
         activity_date = activity.get('startTimeLocal', 'Unknown')
+        device_name = activity.get('deviceName', 'Unknown')
 
         try:
-            print(f"  [{i}/{len(outdoor_cycling)}] Fetching GPS data for: {activity_name} ({activity_date[:10]})")
+            print(f"  [{i}/{len(outdoor_cycling)}] {activity_name} ({activity_date[:10]}) - {device_name}")
 
-            # Get detailed activity data with GPS coordinates
-            details = garmin.get_activity(activity_id)
+            # Download GPX file from Garmin Connect
+            gpx_data = garmin.download_activity(activity_id, dl_fmt=Garmin.ActivityDownloadFormat.GPX)
 
-            # Try to get GPS data from activity splits
-            splits = garmin.get_activity_splits(activity_id)
-
-            # Extract GPS coordinates if available
-            coordinates = []
-
-            # Method 1: Check if splits have location data
-            if splits and isinstance(splits, list):
-                for split in splits:
-                    if 'startLatitude' in split and 'startLongitude' in split:
-                        lat = split.get('startLatitude')
-                        lon = split.get('startLongitude')
-                        if lat and lon:
-                            # Convert from semicircles to degrees
-                            lat_deg = lat * (180 / 2**31) if abs(lat) > 180 else lat
-                            lon_deg = lon * (180 / 2**31) if abs(lon) > 180 else lon
-                            coordinates.append([lat_deg, lon_deg])
-
-            # Method 2: Check details for start/end coordinates
-            if not coordinates and details:
-                start_lat = details.get('startLatitude')
-                start_lon = details.get('startLongitude')
-                end_lat = details.get('endLatitude')
-                end_lon = details.get('endLongitude')
-
-                if start_lat and start_lon:
-                    coordinates.append([start_lat, start_lon])
-                if end_lat and end_lon and (end_lat != start_lat or end_lon != start_lon):
-                    coordinates.append([end_lat, end_lon])
+            # Parse GPS coordinates from GPX
+            coordinates = parse_gpx(gpx_data)
 
             if coordinates:
                 routes.append({
                     'activity_id': activity_id,
                     'name': activity_name,
                     'date': activity_date,
+                    'device': device_name,
                     'coordinates': coordinates,
                     'distance_km': activity.get('distance', 0) / 1000 if activity.get('distance') else 0
                 })
                 print(f"     ✅ Got {len(coordinates)} GPS points")
             else:
-                print(f"     ⚠️  No GPS data available")
+                print(f"     ⚠️  No GPS data in GPX file")
 
         except Exception as e:
-            print(f"     ❌ Error fetching GPS data: {e}")
+            print(f"     ❌ Error: {e}")
             continue
 
     # Save routes to JSON file
