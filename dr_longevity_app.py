@@ -778,6 +778,7 @@ def main():
                 return "-"
 
             display_df['Date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+            display_df['Workout'] = display_df['workout_name'].apply(lambda x: str(x) if pd.notna(x) else "-")
             display_df['Duration'] = display_df['duration_minutes'].apply(format_duration)
             display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{float(x) * 0.621371:.1f} mi" if pd.notna(x) and x > 0 else "-")
             display_df['Avg HR'] = display_df['avg_hr'].apply(lambda x: f"{safe_int(x)} bpm" if pd.notna(x) else "-")
@@ -785,7 +786,7 @@ def main():
             display_df['Calories'] = display_df['calories'].apply(lambda x: safe_int(x))
 
             st.dataframe(
-                display_df[['Date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
+                display_df[['Date', 'Workout', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
                 use_container_width=True,
                 hide_index=True,
                 height=400

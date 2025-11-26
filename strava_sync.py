@@ -174,6 +174,20 @@ def sync_from_strava(days=7, activity_id=None):
             activities = fetch_strava_activities(days)
             print(f"✅ Found {len(activities)} activities")
 
+        # Filter for Peloton activities only
+        peloton_activities = [
+            act for act in activities
+            if act.get('device_name') == 'Peloton Bike' or
+               (act.get('trainer') and 'Peloton' in str(act.get('device_name', '')))
+        ]
+
+        if not activity_id and peloton_activities:
+            print(f"🚴 Filtered to {len(peloton_activities)} Peloton activities (out of {len(activities)} total)")
+            activities = peloton_activities
+        elif not activity_id and not peloton_activities:
+            print(f"ℹ️  No Peloton activities found in last {days} days")
+            return
+
         # Process each activity
         synced_count = 0
         updated_count = 0
@@ -182,9 +196,10 @@ def sync_from_strava(days=7, activity_id=None):
             activity_name = activity.get('name', 'Unknown')
             activity_date = activity.get('start_date_local', 'Unknown')[:10]
             activity_type = activity.get('type', 'Unknown')
+            device_name = activity.get('device_name', 'Unknown')
 
             print(f"\n  [{i}/{len(activities)}] {activity_name} ({activity_date})")
-            print(f"      Type: {activity_type}")
+            print(f"      Type: {activity_type} | Device: {device_name}")
 
             # Get detailed data if needed
             if activity_id or activity.get('average_watts'):

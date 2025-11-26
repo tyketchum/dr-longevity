@@ -50,3 +50,4 @@ Thumbs.db
 # Backups
 backups/
 *.csv.backup
+.archive/
