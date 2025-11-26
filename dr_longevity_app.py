@@ -932,11 +932,31 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
                         col1, col2 = st.columns([2, 1])
 
                         with col1:
-                            # Create map centered on average location
-                            avg_lat = sum(coord[0] for coord in sampled_coords) / len(sampled_coords)
-                            avg_lon = sum(coord[1] for coord in sampled_coords) / len(sampled_coords)
+                            # Center map on recent riding area (last 30 days of rides)
+                            from datetime import datetime, timedelta
+                            recent_cutoff = datetime.now() - timedelta(days=30)
 
-                            m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+                            recent_coords = []
+                            for route in routes:
+                                try:
+                                    route_date = datetime.fromisoformat(route.get('date', '').replace('Z', '+00:00'))
+                                    if route_date >= recent_cutoff:
+                                        recent_coords.extend(route['coordinates'])
+                                except:
+                                    pass
+
+                            # Use recent rides if available, otherwise use all rides
+                            if recent_coords and len(recent_coords) > 100:
+                                center_coords = recent_coords[::10]  # Sample for speed
+                                zoom_level = 13  # Slightly more zoomed in
+                            else:
+                                center_coords = sampled_coords
+                                zoom_level = 12
+
+                            avg_lat = sum(coord[0] for coord in center_coords) / len(center_coords)
+                            avg_lon = sum(coord[1] for coord in center_coords) / len(center_coords)
+
+                            m = folium.Map(location=[avg_lat, avg_lon], zoom_start=zoom_level)
 
                             # Add heatmap layer with optimized parameters
                             HeatMap(sampled_coords, radius=15, blur=25, max_zoom=13).add_to(m)
