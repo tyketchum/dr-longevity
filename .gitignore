@@ -52,3 +52,4 @@ backups/
 *.csv.backup
 .archive/
 cycling_routes.json
+.claude/settings.local.json
