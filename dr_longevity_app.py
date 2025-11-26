@@ -11,6 +11,10 @@ from datetime import datetime, timedelta
 import os
 from supabase import create_client, Client
 from dotenv import load_dotenv
+import folium
+from streamlit_folium import folium_static
+from folium.plugins import HeatMap
+import json
 
 # Load environment variables
 load_dotenv()
@@ -61,8 +65,14 @@ COLORS = {
     'secondary': '#FF6B35',
     'success': '#059669',
     'warning': '#F59E0B',
+    'danger': '#ef4444',
     'info': '#8B5CF6',
-    'neutral': '#6B7280'
+    'neutral': '#6B7280',
+    'zone1': '#3b82f6',
+    'zone2': '#10b981',
+    'zone3': '#f59e0b',
+    'zone4': '#f97316',
+    'zone5': '#ef4444',
 }
 
 # Supabase connection
@@ -88,7 +98,7 @@ def get_supabase_client():
         st.error(f"❌ Error connecting to Supabase: {str(e)}")
         st.stop()
 
-def get_activities_data(supabase: Client, days=90):
+def get_activities_data(supabase: Client, days=1825):
     """Fetch activities data from Supabase"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -110,7 +120,7 @@ def get_activities_data(supabase: Client, days=90):
         st.error(f"Error fetching activities: {str(e)}")
         return pd.DataFrame()
 
-def get_daily_metrics(supabase: Client, days=90):
+def get_daily_metrics(supabase: Client, days=1825):
     """Fetch daily metrics from Supabase"""
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days)
@@ -150,6 +160,235 @@ def safe_float(value, decimals=1, default="N/A"):
     except:
         return default
 
+def calculate_training_stress_metrics(metrics_df):
+    """Calculate CTL, ATL, and TSB from training load data"""
+    if metrics_df.empty or 'training_load' not in metrics_df.columns:
+        return None
+
+    # Sort by date ascending for proper calculation
+    df = metrics_df.sort_values('date').copy()
+    df['training_load'] = df['training_load'].fillna(0)
+
+    # CTL (Chronic Training Load) - 42-day exponentially weighted average
+    df['ctl'] = df['training_load'].ewm(span=42, adjust=False).mean()
+
+    # ATL (Acute Training Load) - 7-day exponentially weighted average
+    df['atl'] = df['training_load'].ewm(span=7, adjust=False).mean()
+
+    # TSB (Training Stress Balance) = CTL - ATL
+    # Positive TSB = Fresh, Negative TSB = Fatigued
+    df['tsb'] = df['ctl'] - df['atl']
+
+    return df.sort_values('date', ascending=False)
+
+def estimate_ftp_from_activities(activities_df):
+    """Get FTP - uses 216W from Garmin data"""
+    # FTP from Garmin Connect
+    # TODO: Pull this dynamically from Garmin API if available
+    return 216
+
+def get_power_zones(ftp):
+    """Calculate power zones based on FTP"""
+    if not ftp:
+        return None
+
+    return {
+        'Active Recovery': (0, int(ftp * 0.55)),
+        'Endurance': (int(ftp * 0.55), int(ftp * 0.75)),
+        'Tempo': (int(ftp * 0.75), int(ftp * 0.90)),
+        'Threshold': (int(ftp * 0.90), int(ftp * 1.05)),
+        'VO2 Max': (int(ftp * 1.05), int(ftp * 1.20)),
+        'Anaerobic': (int(ftp * 1.20), int(ftp * 1.50))
+    }
+
+def calculate_power_zone_distribution(activities_df, ftp):
+    """Calculate time spent in each power zone"""
+    if activities_df.empty or not ftp:
+        return None
+
+    cycling_df = activities_df[
+        (activities_df['activity_type'].str.contains('cycling|biking', case=False, na=False, regex=True)) &
+        (activities_df['avg_power'].notna())
+    ].copy()
+
+    if cycling_df.empty:
+        return None
+
+    zones = get_power_zones(ftp)
+    zone_times = {zone: 0 for zone in zones.keys()}
+
+    for _, activity in cycling_df.iterrows():
+        power = activity['avg_power']
+        duration = activity['duration_minutes']
+
+        for zone_name, (low, high) in zones.items():
+            if low <= power < high:
+                zone_times[zone_name] += duration
+                break
+
+    return zone_times
+
+def calculate_hr_zone_distribution(activities_df):
+    """Calculate time spent in each HR zone from activities data"""
+    if activities_df.empty:
+        return None
+
+    # Sum up time in each HR zone across all activities
+    zone_cols = ['hr_zone_1_minutes', 'hr_zone_2_minutes', 'hr_zone_3_minutes',
+                 'hr_zone_4_minutes', 'hr_zone_5_minutes']
+
+    zone_times = {}
+    for i, col in enumerate(zone_cols, 1):
+        if col in activities_df.columns:
+            total_time = activities_df[col].sum()
+            if pd.notna(total_time):
+                zone_times[f'Zone {i}'] = total_time
+
+    return zone_times if zone_times else None
+
+def analyze_polarized_training(zone_times):
+    """Analyze if training follows 80/20 polarized model"""
+    if not zone_times:
+        return None
+
+    # Polarized training: 80% in zones 1-2 (easy), 20% in zones 4-5 (hard), minimal zone 3
+    total_time = sum(zone_times.values())
+    if total_time == 0:
+        return None
+
+    easy = zone_times.get('Zone 1', 0) + zone_times.get('Zone 2', 0)
+    moderate = zone_times.get('Zone 3', 0)
+    hard = zone_times.get('Zone 4', 0) + zone_times.get('Zone 5', 0)
+
+    return {
+        'easy_pct': (easy / total_time) * 100,
+        'moderate_pct': (moderate / total_time) * 100,
+        'hard_pct': (hard / total_time) * 100,
+        'total_time': total_time,
+        'is_polarized': (easy / total_time) >= 0.75 and (hard / total_time) >= 0.15
+    }
+
+def get_recovery_recommendation(tsb, hrv, avg_hrv):
+    """Generate smart recovery recommendations based on TSB and HRV"""
+    recommendations = []
+
+    # TSB-based recommendations
+    if tsb is not None and pd.notna(tsb):
+        if tsb > 10:
+            recommendations.append("✅ **Fresh & Ready**: Great time for hard workouts or testing FTP")
+        elif tsb > -10:
+            recommendations.append("⚖️ **Balanced**: Maintain current training load")
+        elif tsb > -30:
+            recommendations.append("⚠️ **Fatigued**: Consider reducing volume or intensity")
+        else:
+            recommendations.append("🔴 **Very Fatigued**: Recovery week strongly recommended")
+
+    # HRV-based recommendations
+    if hrv is not None and avg_hrv is not None and pd.notna(hrv) and pd.notna(avg_hrv):
+        hrv_ratio = hrv / avg_hrv
+        if hrv_ratio > 1.1:
+            recommendations.append("💚 **HRV High**: Body is well-recovered")
+        elif hrv_ratio > 0.9:
+            recommendations.append("💛 **HRV Normal**: Recovery adequate")
+        else:
+            recommendations.append("❤️ **HRV Low**: Extra recovery needed")
+
+    if not recommendations:
+        recommendations.append("📊 Need more data for personalized recommendations")
+
+    return recommendations
+
+def create_sparkline(data, color='#3b82f6', dates=None, unit=''):
+    """Create a mini sparkline chart for KPIs with minimal date labels"""
+    if data is None or len(data) < 2:
+        return None
+
+    # Format hover text with dates if available
+    hover_text = []
+    if dates and len(dates) == len(data):
+        for i, (date, value) in enumerate(zip(dates, data)):
+            date_str = date.strftime('%b %d, %Y') if hasattr(date, 'strftime') else str(date)
+            hover_text.append(f"{date_str}<br>{value}{unit}")
+    else:
+        hover_text = [f"{value}{unit}" for value in data]
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=list(range(len(data))),
+        y=data,
+        mode='lines',
+        line=dict(color=color, width=2),
+        fill='tozeroy',
+        fillcolor=f'rgba({int(color[1:3], 16)}, {int(color[3:5], 16)}, {int(color[5:7], 16)}, 0.2)',
+        hovertemplate='%{text}<extra></extra>',
+        text=hover_text
+    ))
+
+    # Add minimal date labels if dates provided
+    if dates and len(dates) >= 2:
+        # Format dates as short strings (MMM 'YY)
+        start_date = dates[0].strftime('%b %y') if hasattr(dates[0], 'strftime') else str(dates[0])[:7]
+        end_date = dates[-1].strftime('%b %y') if hasattr(dates[-1], 'strftime') else str(dates[-1])[:7]
+
+        # Add subtle date annotations at start and end
+        fig.add_annotation(
+            x=0, y=data[0],
+            text=start_date,
+            showarrow=False,
+            font=dict(size=9, color='#9ca3af'),
+            xanchor='left',
+            yanchor='bottom',
+            yshift=5
+        )
+        fig.add_annotation(
+            x=len(data)-1, y=data[-1],
+            text=end_date,
+            showarrow=False,
+            font=dict(size=9, color='#9ca3af'),
+            xanchor='right',
+            yanchor='bottom',
+            yshift=5
+        )
+
+    fig.update_layout(
+        height=60,
+        margin=dict(l=0, r=0, t=0, b=0),
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+        showlegend=False,
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+    )
+
+    return fig
+
+def get_ftp_rating(watts_per_kg):
+    """Get FTP rating based on W/kg for males"""
+    if watts_per_kg > 5.04:
+        return "Superior", "#10b981"
+    elif watts_per_kg >= 3.93:
+        return "Excellent", "#3b82f6"
+    elif watts_per_kg >= 2.79:
+        return "Good", "#059669"
+    elif watts_per_kg >= 2.23:
+        return "Fair", "#f59e0b"
+    else:
+        return "Untrained", "#ef4444"
+
+def get_vo2max_rating(vo2max, age=35):
+    """Get VO2 Max rating based on value (for males)"""
+    # These are general categories, can be adjusted by age
+    if vo2max > 56:
+        return "Superior", "#10b981"
+    elif vo2max >= 51:
+        return "Excellent", "#3b82f6"
+    elif vo2max >= 43:
+        return "Good", "#059669"
+    elif vo2max >= 35:
+        return "Fair", "#f59e0b"
+    else:
+        return "Poor", "#ef4444"
+
 def main():
     # Header
     st.title("🚴 Dr. Longevity")
@@ -161,9 +400,19 @@ def main():
 
         days = st.selectbox(
             "Time Range",
-            options=[30, 60, 90, 180, 365],
-            index=1,  # Default to 60 days
-            format_func=lambda x: f"Last {x} days"
+            options=[30, 60, 90, 180, 365, 730, 1825],
+            index=6,  # Default to 1825 days (5 years / all time)
+            format_func=lambda x: f"Last {x} days" if x < 1825 else "All Time (5 years)"
+        )
+
+        st.subheader("🎯 Goals")
+        target_ftp_wkg = st.number_input(
+            "Target FTP (W/kg)",
+            min_value=0.0,
+            max_value=10.0,
+            value=3.0,
+            step=0.1,
+            help="Set your target FTP in watts per kilogram"
         )
 
         st.divider()
@@ -191,6 +440,41 @@ def main():
             st.cache_data.clear()
             st.rerun()
 
+        # Tech Stack Explanation
+        st.divider()
+        with st.expander("🛠️ Tech Stack & Architecture"):
+            st.markdown("""
+            **Streamlit Standalone vs Snowflake**
+
+            This app uses **Standalone Streamlit** (open-source Python framework):
+            - ✅ Self-hosted on any infrastructure (local, cloud, serverless)
+            - ✅ Full control over dependencies, data sources, and deployment
+            - ✅ Free and open-source - no vendor lock-in
+            - ✅ Deploy anywhere: AWS, GCP, Azure, Vercel, or locally
+
+            **Snowflake Streamlit** (Streamlit in Snowflake):
+            - Native app framework inside Snowflake workspaces
+            - Tightly coupled to Snowflake data warehouse
+            - Managed hosting within Snowflake environment
+            - Great for Snowflake-centric workflows but less flexible
+
+            **Our Stack**:
+            - **Frontend**: Streamlit (Python) - UI components & visualization
+            - **Backend**: Python with Garmin Connect API integration
+            - **Database**: Supabase (PostgreSQL) - open-source Firebase alternative
+            - **Deployment**: Streamlit Community Cloud (free tier)
+            - **Automation**: GitHub Actions for daily data sync
+            - **Viz Libraries**: Plotly (interactive charts), Folium (maps)
+
+            **Why Standalone Streamlit?**
+            - Flexibility to use any database (not just Snowflake)
+            - Cost-effective (free hosting options)
+            - Modern Python ecosystem (pandas, plotly, etc.)
+            - Easy CI/CD with GitHub Actions
+            - Perfect for personal/small team dashboards
+            """)
+
+
         st.divider()
 
         st.caption("**About**")
@@ -213,207 +497,493 @@ def main():
         days_since_last = safe_int(metrics_df.iloc[0]['days_since_last_activity'] if not metrics_df.empty else None, 0)
         current_streak = safe_int(metrics_df.iloc[0]['current_streak'] if not metrics_df.empty else None, 0)
 
-        # Calculate weekly average
+        # Calculate weekly average (last 28 days)
         recent_activities = activities_df[activities_df['date'] >= datetime.now() - timedelta(days=28)]
         weekly_avg = len(recent_activities) / 4 if not recent_activities.empty else 0
 
-        # Total stats
+        # Calculate year-over-year metrics
+        current_year = datetime.now().year
+        last_year = current_year - 1
+
+        current_year_start = datetime(current_year, 1, 1)
+        last_year_start = datetime(last_year, 1, 1)
+        last_year_end = datetime(last_year, 12, 31, 23, 59, 59)
+
+        # This year's activities
+        this_year_activities = activities_df[activities_df['date'] >= current_year_start]
+        this_year_count = len(this_year_activities)
+        this_year_hours = this_year_activities['duration_minutes'].sum() / 60 if not this_year_activities.empty else 0
+
+        # Last year's activities
+        last_year_activities = activities_df[(activities_df['date'] >= last_year_start) & (activities_df['date'] <= last_year_end)]
+        last_year_count = len(last_year_activities)
+        last_year_hours = last_year_activities['duration_minutes'].sum() / 60 if not last_year_activities.empty else 0
+
+        # Calculate year-over-year deltas
+        yoy_count_delta = this_year_count - last_year_count
+        yoy_hours_delta = this_year_hours - last_year_hours
+
+        # Total stats (all time)
         total_duration = safe_int(activities_df['duration_minutes'].sum() if not activities_df.empty else 0)
         total_distance = safe_float(activities_df['distance_km'].sum() if not activities_df.empty else 0)
 
-        # Key Metrics Section
+        # Calculate training metrics for later use
+        stress_metrics_df = calculate_training_stress_metrics(metrics_df)
+        current_tsb = stress_metrics_df.iloc[0]['tsb'] if stress_metrics_df is not None else None
+        current_ctl = stress_metrics_df.iloc[0]['ctl'] if stress_metrics_df is not None else None
+        current_atl = stress_metrics_df.iloc[0]['atl'] if stress_metrics_df is not None else None
+        ftp = estimate_ftp_from_activities(activities_df)
+        vo2max_values = activities_df[activities_df['vo2max_estimate'].notna()]['vo2max_estimate']
+        current_vo2max = vo2max_values.iloc[0] if len(vo2max_values) > 0 else None
+        current_hrv = metrics_df.iloc[0]['hrv'] if not metrics_df.empty and 'hrv' in metrics_df.columns else None
+        avg_hrv = metrics_df['hrv'].mean() if not metrics_df.empty and 'hrv' in metrics_df.columns else None
+        hr_zones = calculate_hr_zone_distribution(activities_df)
+        polarized_analysis = analyze_polarized_training(hr_zones)
+
+        # Get weight for W/kg calculation
+        # Try to pull from database first, fallback to hardcoded value
+        current_weight_kg = 79.4  # Default fallback
+
+        if not metrics_df.empty and 'weight' in metrics_df.columns:
+            # Get most recent weight from daily metrics
+            weight_kg = metrics_df.iloc[0]['weight']
+            if pd.notna(weight_kg) and weight_kg > 0:
+                current_weight_kg = float(weight_kg)
+                print(f"Using weight from database: {current_weight_kg} kg")
+
+        # ===== PRIMARY KPIs WITH TRENDS =====
+        st.header("⚡ Performance KPIs")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            if ftp:
+                # Get FTP trend (last 90 days of cycling activities)
+                # Match any cycling/biking activity type
+                cycling_activities = activities_df[activities_df['activity_type'].str.contains('cycling|biking', case=False, na=False, regex=True)]
+                if not cycling_activities.empty and 'avg_power' in cycling_activities.columns:
+                    # Calculate rolling FTP estimates over time
+                    ftp_history = cycling_activities[cycling_activities['avg_power'].notna()].copy()
+                    ftp_history = ftp_history.sort_values('date')
+                    ftp_history['estimated_ftp'] = (ftp_history['avg_power'] * 0.95).astype(int)
+
+                    # Show sparkline if we have data (even just 1 point)
+                    if len(ftp_history) >= 1:
+                        ftp_trend_data = ftp_history['estimated_ftp'].tail(10).tolist()
+                        ftp_trend_dates = ftp_history['date'].tail(10).tolist()
+
+                        # Calculate FTP delta based on sparkline data (first vs last)
+                        ftp_delta = None
+                        if len(ftp_trend_data) >= 2:
+                            delta_value = ftp_trend_data[-1] - ftp_trend_data[0]
+                            ftp_delta = f"+{delta_value}W" if delta_value > 0 else f"{delta_value}W"
+
+                        st.metric(
+                            "FTP",
+                            f"{ftp}W",
+                            delta=ftp_delta,
+                            help="📊 Calculation: Max(Avg Power × 0.95) from recent cycling activities | Why: FTP represents the power you can sustain for ~1 hour. We estimate it from your ride average power. The sparkline shows how your power output (and estimated FTP) varies across rides over time."
+                        )
+
+                        if len(ftp_trend_data) >= 2:
+                            fig = create_sparkline(ftp_trend_data, COLORS['primary'], dates=ftp_trend_dates, unit='W')
+                            if fig:
+                                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                        else:
+                            st.caption(f"📊 {len(ftp_trend_data)} data point - need 2+ for trend")
+                    else:
+                        st.metric("FTP", f"{ftp}W", help="Functional Threshold Power")
+                else:
+                    st.metric("FTP", f"{ftp}W", help="Functional Threshold Power")
+
+                # Show W/kg and rating if weight available
+                if current_weight_kg:
+                    watts_per_kg = ftp / current_weight_kg
+                    rating, color = get_ftp_rating(watts_per_kg)
+                    st.markdown(f"**{watts_per_kg:.2f} W/kg** • <span style='color:{color};font-weight:600'>{rating}</span>", unsafe_allow_html=True)
+                    st.caption("📊 Calculation: FTP ÷ Body Weight | Why: W/kg normalizes power for body weight - key metric for climbing and comparing riders. Updates automatically when weight changes in Garmin.")
+
+                    # Show progress toward target FTP
+                    if target_ftp_wkg and target_ftp_wkg > 0:
+                        target_watts = int(target_ftp_wkg * current_weight_kg)
+                        watts_to_goal = target_watts - ftp
+                        progress = (watts_per_kg / target_ftp_wkg) * 100
+
+                        if watts_to_goal > 0:
+                            st.caption(f"🎯 Goal: **{target_ftp_wkg:.1f} W/kg** ({target_watts}W) • **+{watts_to_goal}W** to go ({progress:.1f}%)")
+                        else:
+                            st.caption(f"🎯 Goal: **{target_ftp_wkg:.1f} W/kg** ({target_watts}W) • ✅ **Goal achieved!**")
+                else:
+                    st.caption("Weight data needed for W/kg rating")
+            else:
+                st.metric("FTP", "N/A", help="Need cycling power data")
+
+        with col2:
+            if current_vo2max:
+                # Get VO2 max trend over time
+                vo2_history = activities_df[activities_df['vo2max_estimate'].notna()].copy()
+                vo2_history = vo2_history.sort_values('date')
+
+                # Display as whole number
+                vo2max_int = int(round(current_vo2max))
+
+                # Show sparkline if we have data
+                if len(vo2_history) >= 1:
+                    vo2_trend_data = vo2_history['vo2max_estimate'].tail(10).tolist()
+                    vo2_trend_dates = vo2_history['date'].tail(10).tolist()
+
+                    # Calculate VO2 max delta based on sparkline data (first vs last)
+                    vo2_delta = None
+                    if len(vo2_trend_data) >= 2:
+                        delta_val = vo2_trend_data[-1] - vo2_trend_data[0]
+                        vo2_delta = f"+{int(round(delta_val))}" if delta_val > 0 else f"{int(round(delta_val))}"
+
+                    st.metric(
+                        "VO2 Max",
+                        f"{vo2max_int}",
+                        delta=vo2_delta,
+                        help="📊 Calculation: Garmin estimates VO2 Max from heart rate, pace, and activity data | Why: VO2 Max measures your body's ability to use oxygen during exercise - higher is better. It's the gold standard for cardiovascular fitness. The sparkline shows your last 10 VO2 Max estimates over time."
+                    )
+
+                    if len(vo2_trend_data) >= 2:
+                        fig = create_sparkline(vo2_trend_data, COLORS['secondary'], dates=vo2_trend_dates, unit=' ml/kg/min')
+                        if fig:
+                            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+                    else:
+                        st.caption(f"📊 {len(vo2_trend_data)} data point - need 2+ for trend")
+                else:
+                    st.metric("VO2 Max", f"{vo2max_int}", help="Cardio fitness estimate (ml/kg/min)")
+
+                # Show rating
+                rating, color = get_vo2max_rating(vo2max_int)
+                st.markdown(f"<span style='color:{color};font-weight:600;font-size:1.1rem'>{rating}</span>", unsafe_allow_html=True)
+            else:
+                st.metric("VO2 Max", "N/A", help="Need activities with VO2 max estimates")
+
+        st.caption("📈 Sparkline trends show last 10 activities • Ratings based on age/gender standards")
+        st.divider()
+
+        # Monthly Summary
+        st.header("📅 Monthly Summary")
+
+        # Calculate monthly stats
+        now = datetime.now()
+        current_month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_end = current_month_start - timedelta(days=1)
+        last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Current month activities
+        current_month_activities = activities_df[activities_df['date'] >= current_month_start]
+        current_month_count = len(current_month_activities)
+        current_month_hours = current_month_activities['duration_minutes'].sum() / 60 if not current_month_activities.empty else 0
+
+        # Last month activities
+        last_month_activities = activities_df[(activities_df['date'] >= last_month_start) & (activities_df['date'] < current_month_start)]
+        last_month_count = len(last_month_activities)
+        last_month_hours = last_month_activities['duration_minutes'].sum() / 60 if not last_month_activities.empty else 0
+
+        # Calculate deltas
+        count_delta = current_month_count - last_month_count
+        hours_delta = current_month_hours - last_month_hours
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.metric(
+                "This Month: Workouts",
+                current_month_count,
+                delta=f"{count_delta:+d} vs last month" if last_month_count > 0 else None,
+                help=f"Current: {current_month_count} | Last month: {last_month_count}"
+            )
+
+        with col2:
+            st.metric(
+                "This Month: Hours",
+                f"{current_month_hours:.1f}h",
+                delta=f"{hours_delta:+.1f}h vs last month" if last_month_hours > 0 else None,
+                help=f"Current: {current_month_hours:.1f}h | Last month: {last_month_hours:.1f}h"
+            )
+
+        st.divider()
+
+        # Activity Summary (Secondary Metrics)
         st.header("📊 Activity Summary")
 
         col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
-            st.metric("Days Since Last Workout", f"{days_since_last}")
+            # Days since last workout - context about consistency
+            context_emoji = "🔥" if days_since_last == 0 else "✅" if days_since_last <= 2 else "⚠️" if days_since_last <= 7 else "❌"
+            st.metric(
+                "Days Since Last Workout",
+                f"{days_since_last}",
+                help=f"{context_emoji} 0-2 days: Excellent | 3-7 days: Good | 7+ days: Consider getting back on the bike!"
+            )
 
         with col2:
-            st.metric("Current Streak", f"{current_streak} days")
+            # Current streak - context about momentum
+            streak_status = "🔥 On fire!" if current_streak >= 7 else "💪 Building momentum" if current_streak >= 3 else "👍 Keep going"
+            st.metric(
+                "Current Streak",
+                f"{current_streak} days",
+                help=f"{streak_status} | Best practice: 3-4 workouts per week"
+            )
 
         with col3:
-            st.metric("Total Workouts", f"{total_activities}")
+            # This year workouts - year-over-year comparison
+            st.metric(
+                f"{current_year} Workouts",
+                this_year_count,
+                delta=f"{yoy_count_delta:+d} vs {last_year}" if last_year_count > 0 else None,
+                help=f"This year: {this_year_count} | Last year: {last_year_count} | Goal: Maintain or increase volume"
+            )
 
         with col4:
-            st.metric("Weekly Average", f"{weekly_avg:.1f}")
+            # Weekly average - context about training frequency
+            freq_status = "🎯 Optimal" if weekly_avg >= 3 else "📈 Room to grow" if weekly_avg >= 1 else "🚨 Too infrequent"
+            st.metric(
+                "Weekly Average (4wks)",
+                f"{weekly_avg:.1f}",
+                help=f"{freq_status} | Optimal: 3-5 workouts/week | Your current: {weekly_avg:.1f}/week"
+            )
 
         with col5:
-            st.metric("Total Hours", f"{total_duration / 60:.0f}h")
+            # This year hours - year-over-year comparison
+            st.metric(
+                f"{current_year} Hours",
+                f"{this_year_hours:.0f}h",
+                delta=f"{yoy_hours_delta:+.0f}h vs {last_year}" if last_year_hours > 0 else None,
+                help=f"This year: {this_year_hours:.0f}h | Last year: {last_year_hours:.0f}h | All-time: {total_duration / 60:.0f}h"
+            )
 
         st.divider()
 
-        # Activity Analysis
-        st.header("📈 Activity Analysis")
+        # ===== RECENT WORKOUTS (Prominent Display) =====
+        st.header("🏋️ Recent Workouts")
 
-        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Workout History", "Training Patterns", "Performance", "Nutrition", "Tech Stack"])
+        if not activities_df.empty:
+            # Recent activities table
+            display_df = activities_df.head(15).copy()
 
+            # Format duration as hours and minutes
+            def format_duration(minutes):
+                if pd.notna(minutes) and minutes > 0:
+                    mins = int(minutes)
+                    if mins >= 60:
+                        hours = mins // 60
+                        remaining_mins = mins % 60
+                        return f"{hours}h {remaining_mins}m"
+                    else:
+                        return f"{mins}m"
+                return "-"
+
+            display_df['Date'] = display_df['date'].dt.strftime('%Y-%m-%d')
+            display_df['Duration'] = display_df['duration_minutes'].apply(format_duration)
+            display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{float(x) * 0.621371:.1f} mi" if pd.notna(x) and x > 0 else "-")
+            display_df['Avg HR'] = display_df['avg_hr'].apply(lambda x: f"{safe_int(x)} bpm" if pd.notna(x) else "-")
+            display_df['Avg Power'] = display_df['avg_power'].apply(lambda x: f"{safe_int(x)} W" if pd.notna(x) else "-")
+            display_df['Calories'] = display_df['calories'].apply(lambda x: safe_int(x))
+
+            st.dataframe(
+                display_df[['Date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
+                use_container_width=True,
+                hide_index=True,
+                height=400
+            )
+        else:
+            st.info("No activities found in the selected time range.")
+
+        st.divider()
+
+        # Activity Analysis Tabs
+        st.header("📊 Detailed Analysis")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["Power Zones", "HR Zones", "Polarized Training", "Nutrition"])
+
+        # ===== POWER ZONES TAB =====
         with tab1:
-            if not activities_df.empty:
-                st.subheader("Recent Workouts")
+            st.subheader("Power Zone Distribution")
 
-                # Activity timeline
-                fig_timeline = go.Figure()
+            if ftp:
+                zones = get_power_zones(ftp)
 
-                for activity_type in activities_df['activity_type'].unique():
-                    data = activities_df[activities_df['activity_type'] == activity_type]
-                    fig_timeline.add_trace(go.Scatter(
-                        x=data['date'],
-                        y=data['duration_minutes'],
-                        mode='markers',
-                        name=activity_type,
-                        marker=dict(size=10),
-                        hovertemplate='<b>%{fullData.name}</b><br>Date: %{x}<br>Duration: %{y} min<extra></extra>'
+                # Display zone ranges
+                st.markdown("### Training Zones")
+                zone_colors = ['#3b82f6', '#10b981', '#f59e0b', '#f97316', '#ef4444', '#dc2626']
+
+                cols = st.columns(3)
+                for idx, (zone_name, (low, high)) in enumerate(zones.items()):
+                    with cols[idx % 3]:
+                        st.markdown(f"**{zone_name}**")
+                        st.markdown(f"`{low}-{high}W` ({int(low/ftp*100)}-{int(high/ftp*100)}% FTP)")
+
+                # Calculate and display time in zones
+                zone_times = calculate_power_zone_distribution(activities_df, ftp)
+                if zone_times:
+                    st.markdown("### Time in Each Zone")
+
+                    # Create horizontal bar chart
+                    zone_names = list(zone_times.keys())
+                    zone_hours = [zone_times[z] / 60 for z in zone_names]
+
+                    fig_power_zones = go.Figure(go.Bar(
+                        x=zone_hours,
+                        y=zone_names,
+                        orientation='h',
+                        marker_color=zone_colors[:len(zone_names)],
+                        text=[f"{h:.1f}h" for h in zone_hours],
+                        textposition='auto',
                     ))
 
-                fig_timeline.update_layout(
+                    fig_power_zones.update_layout(
+                        height=400,
+                        margin=dict(l=20, r=20, t=20, b=20),
+                        xaxis_title="Hours",
+                        yaxis_title="",
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color='#e8eaed')
+                    )
+
+                    st.plotly_chart(fig_power_zones, use_container_width=True)
+
+                    # Show percentages
+                    total_hours = sum(zone_hours)
+                    if total_hours > 0:
+                        st.markdown("### Zone Distribution")
+                        for zone, hours in zip(zone_names, zone_hours):
+                            pct = (hours / total_hours) * 100
+                            st.progress(pct / 100, text=f"**{zone}**: {pct:.1f}%")
+                else:
+                    st.info("No power data available for zone analysis")
+            else:
+                st.info("FTP not available. Need cycling activities with power data to calculate zones.")
+
+        # ===== HR ZONES TAB =====
+        with tab2:
+            st.subheader("Heart Rate Zone Distribution")
+
+            if hr_zones:
+                st.markdown("### Time in Each HR Zone")
+
+                zone_names = list(hr_zones.keys())
+                zone_hours = [hr_zones[z] / 60 for z in zone_names]
+                hr_zone_colors = [COLORS['zone1'], COLORS['zone2'], COLORS['zone3'], COLORS['zone4'], COLORS['zone5']]
+
+                # Create horizontal bar chart
+                fig_hr_zones = go.Figure(go.Bar(
+                    x=zone_hours,
+                    y=zone_names,
+                    orientation='h',
+                    marker_color=hr_zone_colors[:len(zone_names)],
+                    text=[f"{h:.1f}h" for h in zone_hours],
+                    textposition='auto',
+                ))
+
+                fig_hr_zones.update_layout(
                     height=400,
                     margin=dict(l=20, r=20, t=20, b=20),
-                    hovermode='closest',
-                    xaxis_title="Date",
-                    yaxis_title="Duration (minutes)",
+                    xaxis_title="Hours",
+                    yaxis_title="",
                     plot_bgcolor='rgba(0,0,0,0)',
                     paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='#e8eaed')
                 )
 
-                st.plotly_chart(fig_timeline, use_container_width=True)
+                st.plotly_chart(fig_hr_zones, use_container_width=True)
 
-                # Recent activities table
-                st.subheader("Workout Log")
-                display_df = activities_df.head(10).copy()
-
-                # Format duration as hours and minutes
-                def format_duration(minutes):
-                    if pd.notna(minutes) and minutes > 0:
-                        mins = int(minutes)
-                        if mins >= 60:
-                            hours = mins // 60
-                            remaining_mins = mins % 60
-                            return f"{hours}h {remaining_mins}m"
-                        else:
-                            return f"{mins}m"
-                    return "-"
-
-                display_df['Date'] = display_df['date'].dt.strftime('%Y-%m-%d')
-                display_df['Duration'] = display_df['duration_minutes'].apply(format_duration)
-                display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{float(x) * 0.621371:.1f} mi" if pd.notna(x) and x > 0 else "-")
-                display_df['Avg HR'] = display_df['avg_hr'].apply(lambda x: f"{safe_int(x)} bpm" if pd.notna(x) else "-")
-                display_df['Avg Power'] = display_df['avg_power'].apply(lambda x: f"{safe_int(x)} W" if pd.notna(x) else "-")
-                display_df['Calories'] = display_df['calories'].apply(lambda x: safe_int(x))
-
-                st.dataframe(
-                    display_df[['Date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
-                    use_container_width=True,
-                    hide_index=True
-                )
-            else:
-                st.info("No activities found in the selected time range.")
-
-        with tab2:
-            if not activities_df.empty:
-                st.subheader("Activity Frequency")
-
+                # Zone descriptions
+                st.markdown("### Zone Descriptions")
                 col1, col2 = st.columns(2)
 
                 with col1:
-                    # Activities by type
-                    activity_counts = activities_df['activity_type'].value_counts()
-                    fig_pie = go.Figure(data=[go.Pie(
-                        labels=activity_counts.index,
-                        values=activity_counts.values,
-                        hole=.4
-                    )])
-                    fig_pie.update_layout(
-                        height=350,
-                        margin=dict(l=20, r=20, t=40, b=20),
-                        title="Workouts by Type"
-                    )
-                    st.plotly_chart(fig_pie, use_container_width=True)
+                    st.markdown("**Zone 1**: Recovery (50-60% max HR)")
+                    st.markdown("**Zone 2**: Endurance (60-70% max HR)")
+                    st.markdown("**Zone 3**: Tempo (70-80% max HR)")
 
                 with col2:
-                    # Weekly volume
-                    activities_df['week'] = activities_df['date'].dt.to_period('W').astype(str)
-                    weekly_duration = activities_df.groupby('week')['duration_minutes'].sum().reset_index()
-                    weekly_duration['hours'] = weekly_duration['duration_minutes'] / 60
+                    st.markdown("**Zone 4**: Threshold (80-90% max HR)")
+                    st.markdown("**Zone 5**: VO2 Max (90-100% max HR)")
 
-                    fig_weekly = go.Figure(data=[go.Bar(
-                        x=weekly_duration['week'],
-                        y=weekly_duration['hours'],
-                        marker_color=COLORS['primary']
-                    )])
-                    fig_weekly.update_layout(
-                        height=350,
-                        margin=dict(l=20, r=20, t=40, b=20),
-                        title="Weekly Training Volume",
-                        xaxis_title="Week",
-                        yaxis_title="Hours",
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
-                    )
-                    st.plotly_chart(fig_weekly, use_container_width=True)
+                # Show percentages
+                total_hours = sum(zone_hours)
+                if total_hours > 0:
+                    st.markdown("### Zone Distribution")
+                    for zone, hours in zip(zone_names, zone_hours):
+                        pct = (hours / total_hours) * 100
+                        st.progress(pct / 100, text=f"**{zone}**: {pct:.1f}%")
+            else:
+                st.info("No heart rate zone data available")
 
-                # Activity metrics
-                st.subheader("Training Metrics")
+        # ===== POLARIZED TRAINING TAB =====
+        with tab3:
+            st.subheader("Polarized Training Analysis (80/20 Rule)")
+
+            if polarized_analysis:
+                st.markdown("""
+                ### What is Polarized Training?
+
+                The **80/20 Rule** suggests that elite endurance athletes spend approximately:
+                - **80%** of training time at low intensity (Zone 1-2)
+                - **20%** at high intensity (Zone 4-5)
+                - Minimal time in the "gray zone" (Zone 3)
+
+                This approach maximizes aerobic development while allowing adequate recovery for high-quality hard sessions.
+                """)
+
+                # Create pie chart
+                fig_polarized = go.Figure(data=[go.Pie(
+                    labels=['Easy (Z1-2)', 'Moderate (Z3)', 'Hard (Z4-5)'],
+                    values=[polarized_analysis['easy_pct'], polarized_analysis['moderate_pct'], polarized_analysis['hard_pct']],
+                    marker_colors=[COLORS['secondary'], COLORS['warning'], COLORS['danger']],
+                    hole=0.4,
+                    textinfo='label+percent',
+                    textfont=dict(size=14, color='white')
+                )])
+
+                fig_polarized.update_layout(
+                    height=400,
+                    margin=dict(l=20, r=20, t=20, b=20),
+                    showlegend=True,
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='#e8eaed')
+                )
+
+                st.plotly_chart(fig_polarized, use_container_width=True)
+
+                # Analysis
                 col1, col2, col3 = st.columns(3)
 
                 with col1:
-                    avg_duration = activities_df['duration_minutes'].mean()
-                    st.metric("Avg Workout Duration", f"{safe_int(avg_duration)} min")
+                    st.metric("Easy Intensity", f"{polarized_analysis['easy_pct']:.1f}%",
+                             help="Zone 1-2: Target 75-80%")
 
                 with col2:
-                    avg_hr = activities_df['avg_hr'].mean()
-                    st.metric("Avg Heart Rate", f"{safe_int(avg_hr)} bpm" if pd.notna(avg_hr) else "N/A")
+                    st.metric("Moderate Intensity", f"{polarized_analysis['moderate_pct']:.1f}%",
+                             help="Zone 3: Keep minimal")
 
                 with col3:
-                    total_cal = activities_df['calories'].sum()
-                    st.metric("Total Calories", f"{safe_int(total_cal):,}")
+                    st.metric("Hard Intensity", f"{polarized_analysis['hard_pct']:.1f}%",
+                             help="Zone 4-5: Target 15-20%")
 
-        with tab3:
-            if not activities_df.empty:
-                st.subheader("Performance Trends")
+                # Recommendations
+                st.markdown("### Your Training Distribution")
+                if polarized_analysis['is_polarized']:
+                    st.success("✅ **Excellent!** Your training follows the polarized model. Keep it up!")
+                else:
+                    st.warning("⚠️ **Not Optimal**: Your training isn't polarized. Here's how to adjust:")
+                    if polarized_analysis['easy_pct'] < 75:
+                        st.markdown("- 🐌 **Do more easy workouts**: Slow down your easy days to Zone 1-2")
+                    if polarized_analysis['moderate_pct'] > 15:
+                        st.markdown("- ⚠️ **Avoid the gray zone**: Zone 3 is too hard to recover from but not hard enough for adaptation")
+                    if polarized_analysis['hard_pct'] < 15:
+                        st.markdown("- 🚀 **Add intensity**: Include 1-2 hard interval sessions per week")
 
-                # Heart rate zones distribution
-                activities_with_hr = activities_df[activities_df['avg_hr'].notna()]
-                if not activities_with_hr.empty:
-                    fig_hr = go.Figure()
-                    fig_hr.add_trace(go.Scatter(
-                        x=activities_with_hr['date'],
-                        y=activities_with_hr['avg_hr'],
-                        mode='lines+markers',
-                        name='Avg HR',
-                        line=dict(color=COLORS['secondary'], width=2),
-                        marker=dict(size=6)
-                    ))
+                st.markdown(f"**Total training time analyzed**: {polarized_analysis['total_time'] / 60:.1f} hours")
+            else:
+                st.info("Need heart rate zone data to perform polarized training analysis")
 
-                    fig_hr.update_layout(
-                        height=350,
-                        margin=dict(l=20, r=20, t=20, b=20),
-                        hovermode='x unified',
-                        xaxis_title="",
-                        yaxis_title="Heart Rate (bpm)",
-                        plot_bgcolor='rgba(0,0,0,0)',
-                        paper_bgcolor='rgba(0,0,0,0)',
-                    )
-
-                    st.plotly_chart(fig_hr, use_container_width=True)
-
-                # Power/Performance metrics
-                activities_with_power = activities_df[activities_df['avg_power'].notna()]
-                if not activities_with_power.empty:
-                    col1, col2, col3 = st.columns(3)
-
-                    with col1:
-                        avg_power = activities_with_power['avg_power'].mean()
-                        st.metric("Avg Power", f"{safe_int(avg_power)} W")
-
-                    with col2:
-                        max_power = activities_with_power['max_power'].max()
-                        st.metric("Max Power", f"{safe_int(max_power)} W")
-
-                    with col3:
-                        total_dist = activities_df['distance_km'].sum()
-                        st.metric("Total Distance", f"{safe_float(total_dist)} km")
-
+        # ===== NUTRITION TAB =====
         with tab4:
             st.subheader("Nutrition Tracking")
 
@@ -507,103 +1077,91 @@ def main():
             except:
                 st.info("Start logging to see your nutrition history!")
 
-        with tab5:
-            st.subheader("🚀 Tech Stack & Architecture")
+        # Cycling Routes Section
+        st.divider()
+        st.header("🗺️ Cycling Routes")
 
-            st.markdown("""
-            This app demonstrates a modern, cloud-native architecture for health data analytics. Here's why each technology was chosen:
+        # Check for GPS data
+        gps_file = 'cycling_routes.json'
+        if os.path.exists(gps_file):
+            try:
+                with open(gps_file, 'r') as f:
+                    routes = json.load(f)
 
-            ## Frontend
-            **🎨 Streamlit**
-            - **Why**: Rapid prototyping, Python-native, data science focused
-            - **vs React/Vue**: No JavaScript required, faster iteration
-            - **vs Dash**: Better UX, more intuitive API, active community
-            - **Perfect for**: Data dashboards, internal tools, demos
+                if routes and len(routes) > 0:
+                    # Create heatmap
+                    st.subheader("Route Heatmap")
 
-            ## Backend & Database
-            **🗄️ Supabase (PostgreSQL)**
-            - **Why**: Open-source Firebase alternative, real-time capabilities
-            - **vs Firebase**: Self-hostable, SQL queries, no vendor lock-in
-            - **vs MongoDB**: Better for structured health data, ACID compliance
-            - **vs Traditional DB**: Built-in auth, real-time subscriptions, auto APIs
+                    # Get all coordinates
+                    all_coords = []
+                    for route in routes:
+                        all_coords.extend(route['coordinates'])
 
-            ## Data Pipeline
-            **🔄 GitHub Actions**
-            - **Why**: Free for public repos, integrated with version control
-            - **vs Airflow**: Simpler setup, no infrastructure needed
-            - **vs Lambda/Functions**: Easier debugging, version controlled
-            - **Schedule**: Twice daily sync (midnight & noon CST)
+                    if all_coords:
+                        # Create map centered on average location
+                        avg_lat = sum(coord[0] for coord in all_coords) / len(all_coords)
+                        avg_lon = sum(coord[1] for coord in all_coords) / len(all_coords)
 
-            ## Language
-            **🐍 Python**
-            - **Why**: Rich data science ecosystem, readable, versatile
-            - **Libraries**: pandas (data manipulation), plotly (visualization)
-            - **Integration**: Direct APIs for Garmin, Strava, Supabase
+                        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
 
-            ## Data Sources
-            **📊 Garmin Connect API**
-            - Via `garminconnect` library
-            - Comprehensive health metrics (HR, HRV, sleep, steps)
-            - Activity data with power, cadence, pace
+                        # Add heatmap layer
+                        HeatMap(all_coords, radius=15, blur=25).add_to(m)
 
-            **🚴 Strava → Garmin**
-            - Peloton → Strava (automatic)
-            - Strava → Garmin (GitHub Actions)
-            - Ensures all workout data in one place
+                        # Display map
+                        folium_static(m, width=800, height=600)
 
-            ## Architecture Benefits
+                        st.caption(f"📍 Showing {len(routes)} routes with {len(all_coords)} GPS points")
+                    else:
+                        st.info("GPS data fetched but no coordinates available")
+                else:
+                    # No GPS data - show explanation
+                    st.info("""
+                    **🚴 GPS Route Data Not Available**
 
-            ✅ **Fully Automated**
-            - Data syncs twice daily without manual intervention
-            - GitHub Actions handles orchestration
-            - Failures logged and visible in Actions tab
+                    Your cycling activities are synced from **Peloton → Strava → Garmin**,
+                    which doesn't include GPS coordinates since Peloton workouts are indoors.
 
-            ✅ **Scalable**
-            - Supabase free tier: 500MB DB, unlimited API requests
-            - Can add features without infrastructure changes
-            - Real-time updates when needed
+                    **Your riding locations** (from activity names):
+                    - 🏡 North Richland Hills (most rides)
+                    - 🏔️ Boulder, CO (some rides)
 
-            ✅ **Cost Effective**
-            - Streamlit Community Cloud: Free
-            - Supabase: Free tier sufficient
-            - GitHub Actions: Free for public repos
-            - **Total cost: $0/month**
+                    To enable route heatmaps in the future:
+                    - Use a GPS-enabled bike computer for outdoor rides
+                    - Manually upload GPX files to Garmin Connect
+                    - Connect a device that records GPS tracks
+                    """)
 
-            ✅ **Developer Experience**
-            - Single language (Python) for everything
-            - No build process, instant reload
-            - Version controlled code and infrastructure
-            - Easy to extend and customize
+                    # Show location breakdown from activity names
+                    cycling_activities = activities_df[activities_df['activity_type'].str.contains('cycling|biking', case=False, na=False, regex=True)]
+                    if not cycling_activities.empty and 'name' in cycling_activities.columns:
+                        location_counts = {}
+                        for name in cycling_activities['name']:
+                            if 'North Richland Hills' in str(name):
+                                location_counts['North Richland Hills'] = location_counts.get('North Richland Hills', 0) + 1
+                            elif 'Boulder' in str(name):
+                                location_counts['Boulder'] = location_counts.get('Boulder', 0) + 1
+                            elif 'Cycling' in str(name) or 'Road Biking' in str(name):
+                                location_counts['Other'] = location_counts.get('Other', 0) + 1
 
-            ## Alternative Approaches Considered
+                        if location_counts:
+                            st.subheader("Ride Locations")
+                            cols = st.columns(len(location_counts))
+                            for i, (location, count) in enumerate(location_counts.items()):
+                                with cols[i]:
+                                    st.metric(location, count)
 
-            **Option 1: React + Node.js + MongoDB**
-            - More flexible but requires JavaScript
-            - Longer development time
-            - Better for: Consumer-facing products
+            except Exception as e:
+                st.error(f"Error loading route data: {e}")
+        else:
+            st.info("""
+            **🚴 GPS Route Data Not Available**
 
-            **Option 2: Flask + SQLite + Heroku**
-            - Simpler but no real-time capabilities
-            - SQLite limits for concurrent users
-            - Better for: Single-user applications
+            Your cycling activities are synced from **Peloton → Strava → Garmin**,
+            which doesn't include GPS coordinates since Peloton workouts are indoors.
 
-            **Option 3: Next.js + Vercel + PlanetScale**
-            - Modern, serverless, edge-first
-            - Steeper learning curve
-            - Better for: Global, high-traffic apps
-
-            ## This Stack Is Perfect For:
-            - 📊 Data dashboards and analytics
-            - 🏃 Personal health tracking
-            - 🎓 Learning demos and portfolios
-            - 🚀 MVP development and prototyping
-            - 🔬 Research and experimentation
-
-            ## Source Code
-            All code for this app is on GitHub. Feel free to fork and customize!
+            To enable route heatmaps, run: `python3 fetch_gps_routes.py`
+            (Note: This will only work if you have outdoor rides with GPS data in Garmin Connect)
             """)
-
-            st.info("💡 **Pro Tip**: This architecture can be adapted for any personal data tracking (finance, habits, productivity, etc.)")
 
         # Footer
         st.divider()
