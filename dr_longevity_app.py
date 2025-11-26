@@ -246,7 +246,7 @@ def main():
         # Activity Analysis
         st.header("📈 Activity Analysis")
 
-        tab1, tab2, tab3 = st.tabs(["Workout History", "Training Patterns", "Performance"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Workout History", "Training Patterns", "Performance", "Nutrition", "Tech Stack"])
 
         with tab1:
             if not activities_df.empty:
@@ -294,14 +294,15 @@ def main():
                             return f"{mins}m"
                     return "-"
 
+                display_df['Date'] = display_df['date'].dt.strftime('%Y-%m-%d')
                 display_df['Duration'] = display_df['duration_minutes'].apply(format_duration)
-                display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{safe_float(x)} km" if pd.notna(x) and x > 0 else "-")
+                display_df['Distance'] = display_df['distance_km'].apply(lambda x: f"{float(x) * 0.621371:.1f} mi" if pd.notna(x) and x > 0 else "-")
                 display_df['Avg HR'] = display_df['avg_hr'].apply(lambda x: f"{safe_int(x)} bpm" if pd.notna(x) else "-")
                 display_df['Avg Power'] = display_df['avg_power'].apply(lambda x: f"{safe_int(x)} W" if pd.notna(x) else "-")
                 display_df['Calories'] = display_df['calories'].apply(lambda x: safe_int(x))
 
                 st.dataframe(
-                    display_df[['date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
+                    display_df[['Date', 'activity_type', 'Duration', 'Distance', 'Avg HR', 'Avg Power', 'Calories']],
                     use_container_width=True,
                     hide_index=True
                 )
@@ -412,6 +413,197 @@ def main():
                     with col3:
                         total_dist = activities_df['distance_km'].sum()
                         st.metric("Total Distance", f"{safe_float(total_dist)} km")
+
+        with tab4:
+            st.subheader("Nutrition Tracking")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("### 🍎 Food Log")
+                with st.form("food_log_form"):
+                    food_date = st.date_input("Date", datetime.now())
+                    food_time = st.time_input("Time", datetime.now().time())
+                    meal_type = st.selectbox("Meal Type", ["Breakfast", "Lunch", "Dinner", "Snack"])
+                    food_name = st.text_input("Food Name")
+                    col_a, col_b = st.columns(2)
+                    with col_a:
+                        calories = st.number_input("Calories", min_value=0, step=10)
+                        protein = st.number_input("Protein (g)", min_value=0.0, step=0.5)
+                    with col_b:
+                        carbs = st.number_input("Carbs (g)", min_value=0.0, step=0.5)
+                        fat = st.number_input("Fat (g)", min_value=0.0, step=0.5)
+                    notes = st.text_area("Notes")
+
+                    if st.form_submit_button("Log Food"):
+                        try:
+                            supabase = get_supabase_client()
+                            data = {
+                                'date': str(food_date),
+                                'time': f"{food_date} {food_time}",
+                                'meal_type': meal_type,
+                                'food_name': food_name,
+                                'calories': calories,
+                                'protein_g': protein,
+                                'carbs_g': carbs,
+                                'fat_g': fat,
+                                'notes': notes
+                            }
+                            supabase.table('food_log').insert(data).execute()
+                            st.success("✅ Food logged successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error logging food: {str(e)}")
+
+            with col2:
+                st.markdown("### 💧 Water Log")
+                with st.form("water_log_form"):
+                    water_date = st.date_input("Date", datetime.now(), key="water_date")
+                    water_time = st.time_input("Time", datetime.now().time(), key="water_time")
+                    amount_oz = st.number_input("Amount (oz)", min_value=0.0, step=1.0, value=8.0)
+                    with_electrolytes = st.checkbox("With Electrolytes")
+
+                    if st.form_submit_button("Log Water"):
+                        try:
+                            supabase = get_supabase_client()
+                            data = {
+                                'date': str(water_date),
+                                'time': f"{water_date} {water_time}",
+                                'amount_oz': amount_oz,
+                                'with_electrolytes': with_electrolytes
+                            }
+                            supabase.table('water_log').insert(data).execute()
+                            st.success("✅ Water logged successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error logging water: {str(e)}")
+
+            # Display recent logs
+            st.divider()
+            st.subheader("Recent Logs")
+
+            try:
+                supabase = get_supabase_client()
+
+                col_a, col_b = st.columns(2)
+
+                with col_a:
+                    food_logs = supabase.table('food_log').select('*').order('date', desc=True).limit(10).execute()
+                    if food_logs.data:
+                        st.markdown("**Recent Food**")
+                        food_df = pd.DataFrame(food_logs.data)
+                        st.dataframe(food_df[['date', 'meal_type', 'food_name', 'calories']], use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No food logs yet")
+
+                with col_b:
+                    water_logs = supabase.table('water_log').select('*').order('date', desc=True).limit(10).execute()
+                    if water_logs.data:
+                        st.markdown("**Recent Water**")
+                        water_df = pd.DataFrame(water_logs.data)
+                        st.dataframe(water_df[['date', 'amount_oz', 'with_electrolytes']], use_container_width=True, hide_index=True)
+                    else:
+                        st.info("No water logs yet")
+            except:
+                st.info("Start logging to see your nutrition history!")
+
+        with tab5:
+            st.subheader("🚀 Tech Stack & Architecture")
+
+            st.markdown("""
+            This app demonstrates a modern, cloud-native architecture for health data analytics. Here's why each technology was chosen:
+
+            ## Frontend
+            **🎨 Streamlit**
+            - **Why**: Rapid prototyping, Python-native, data science focused
+            - **vs React/Vue**: No JavaScript required, faster iteration
+            - **vs Dash**: Better UX, more intuitive API, active community
+            - **Perfect for**: Data dashboards, internal tools, demos
+
+            ## Backend & Database
+            **🗄️ Supabase (PostgreSQL)**
+            - **Why**: Open-source Firebase alternative, real-time capabilities
+            - **vs Firebase**: Self-hostable, SQL queries, no vendor lock-in
+            - **vs MongoDB**: Better for structured health data, ACID compliance
+            - **vs Traditional DB**: Built-in auth, real-time subscriptions, auto APIs
+
+            ## Data Pipeline
+            **🔄 GitHub Actions**
+            - **Why**: Free for public repos, integrated with version control
+            - **vs Airflow**: Simpler setup, no infrastructure needed
+            - **vs Lambda/Functions**: Easier debugging, version controlled
+            - **Schedule**: Twice daily sync (midnight & noon CST)
+
+            ## Language
+            **🐍 Python**
+            - **Why**: Rich data science ecosystem, readable, versatile
+            - **Libraries**: pandas (data manipulation), plotly (visualization)
+            - **Integration**: Direct APIs for Garmin, Strava, Supabase
+
+            ## Data Sources
+            **📊 Garmin Connect API**
+            - Via `garminconnect` library
+            - Comprehensive health metrics (HR, HRV, sleep, steps)
+            - Activity data with power, cadence, pace
+
+            **🚴 Strava → Garmin**
+            - Peloton → Strava (automatic)
+            - Strava → Garmin (GitHub Actions)
+            - Ensures all workout data in one place
+
+            ## Architecture Benefits
+
+            ✅ **Fully Automated**
+            - Data syncs twice daily without manual intervention
+            - GitHub Actions handles orchestration
+            - Failures logged and visible in Actions tab
+
+            ✅ **Scalable**
+            - Supabase free tier: 500MB DB, unlimited API requests
+            - Can add features without infrastructure changes
+            - Real-time updates when needed
+
+            ✅ **Cost Effective**
+            - Streamlit Community Cloud: Free
+            - Supabase: Free tier sufficient
+            - GitHub Actions: Free for public repos
+            - **Total cost: $0/month**
+
+            ✅ **Developer Experience**
+            - Single language (Python) for everything
+            - No build process, instant reload
+            - Version controlled code and infrastructure
+            - Easy to extend and customize
+
+            ## Alternative Approaches Considered
+
+            **Option 1: React + Node.js + MongoDB**
+            - More flexible but requires JavaScript
+            - Longer development time
+            - Better for: Consumer-facing products
+
+            **Option 2: Flask + SQLite + Heroku**
+            - Simpler but no real-time capabilities
+            - SQLite limits for concurrent users
+            - Better for: Single-user applications
+
+            **Option 3: Next.js + Vercel + PlanetScale**
+            - Modern, serverless, edge-first
+            - Steeper learning curve
+            - Better for: Global, high-traffic apps
+
+            ## This Stack Is Perfect For:
+            - 📊 Data dashboards and analytics
+            - 🏃 Personal health tracking
+            - 🎓 Learning demos and portfolios
+            - 🚀 MVP development and prototyping
+            - 🔬 Research and experimentation
+
+            ## Source Code
+            All code for this app is on GitHub. Feel free to fork and customize!
+            """)
+
+            st.info("💡 **Pro Tip**: This architecture can be adapted for any personal data tracking (finance, habits, productivity, etc.)")
 
         # Footer
         st.divider()
