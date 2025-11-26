@@ -864,6 +864,88 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
             st.info("No activities found in the selected time range.")
 
         st.divider()
+        # Cycling Routes Section
+        st.divider()
+        st.header("🗺️ Cycling Routes")
+
+        # Check for GPS data
+        gps_file = 'cycling_routes.json'
+        if os.path.exists(gps_file):
+            try:
+                with open(gps_file, 'r') as f:
+                    routes = json.load(f)
+
+                if routes and len(routes) > 0:
+                    # Create heatmap
+                    st.subheader("Route Heatmap")
+
+                    # Get all coordinates
+                    all_coords = []
+                    for route in routes:
+                        all_coords.extend(route['coordinates'])
+
+                    if all_coords:
+                        # Create map centered on average location
+                        avg_lat = sum(coord[0] for coord in all_coords) / len(all_coords)
+                        avg_lon = sum(coord[1] for coord in all_coords) / len(all_coords)
+
+                        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
+
+                        # Add heatmap layer
+                        HeatMap(all_coords, radius=15, blur=25).add_to(m)
+
+                        # Display map
+                        folium_static(m, width=800, height=600)
+
+                        st.caption(f"📍 Showing {len(routes)} routes with {len(all_coords)} GPS points")
+                    else:
+                        st.info("GPS data fetched but no coordinates available")
+                else:
+                    # No GPS data - show explanation
+                    st.info("""
+                    **🚴 GPS Route Data Not Available**
+
+                    To load GPS route data from your Garmin Edge 1040 Solar rides:
+
+                    Run: `python3 fetch_gps_routes.py`
+
+                    This will download GPX files from Garmin Connect for all outdoor cycling activities
+                    and create a heatmap of your routes.
+
+                    **Note:** Peloton rides don't have GPS data (indoor workouts).
+                    """)
+
+                    # Show location breakdown from activity names
+                    cycling_activities = activities_df[activities_df['activity_type'].str.contains('cycling|biking', case=False, na=False, regex=True)]
+                    if not cycling_activities.empty and 'name' in cycling_activities.columns:
+                        location_counts = {}
+                        for name in cycling_activities['name']:
+                            if 'North Richland Hills' in str(name):
+                                location_counts['North Richland Hills'] = location_counts.get('North Richland Hills', 0) + 1
+                            elif 'Boulder' in str(name):
+                                location_counts['Boulder'] = location_counts.get('Boulder', 0) + 1
+                            elif 'Cycling' in str(name) or 'Road Biking' in str(name):
+                                location_counts['Other'] = location_counts.get('Other', 0) + 1
+
+                        if location_counts:
+                            st.subheader("Ride Locations")
+                            cols = st.columns(len(location_counts))
+                            for i, (location, count) in enumerate(location_counts.items()):
+                                with cols[i]:
+                                    st.metric(location, count)
+
+            except Exception as e:
+                st.error(f"Error loading route data: {e}")
+        else:
+            st.info("""
+            **🚴 GPS Route Data Not Available**
+
+            To load GPS route data from your Garmin Edge 1040 Solar rides:
+
+            Run: `python3 fetch_gps_routes.py`
+
+            This will download GPX files from Garmin Connect for all outdoor cycling activities.
+            """)
 
         # Activity Analysis Tabs
         st.header("📊 Detailed Analysis")
@@ -1147,88 +1229,6 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
             except:
                 st.info("Start logging to see your nutrition history!")
 
-        # Cycling Routes Section
-        st.divider()
-        st.header("🗺️ Cycling Routes")
-
-        # Check for GPS data
-        gps_file = 'cycling_routes.json'
-        if os.path.exists(gps_file):
-            try:
-                with open(gps_file, 'r') as f:
-                    routes = json.load(f)
-
-                if routes and len(routes) > 0:
-                    # Create heatmap
-                    st.subheader("Route Heatmap")
-
-                    # Get all coordinates
-                    all_coords = []
-                    for route in routes:
-                        all_coords.extend(route['coordinates'])
-
-                    if all_coords:
-                        # Create map centered on average location
-                        avg_lat = sum(coord[0] for coord in all_coords) / len(all_coords)
-                        avg_lon = sum(coord[1] for coord in all_coords) / len(all_coords)
-
-                        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
-
-                        # Add heatmap layer
-                        HeatMap(all_coords, radius=15, blur=25).add_to(m)
-
-                        # Display map
-                        folium_static(m, width=800, height=600)
-
-                        st.caption(f"📍 Showing {len(routes)} routes with {len(all_coords)} GPS points")
-                    else:
-                        st.info("GPS data fetched but no coordinates available")
-                else:
-                    # No GPS data - show explanation
-                    st.info("""
-                    **🚴 GPS Route Data Not Available**
-
-                    To load GPS route data from your Garmin Edge 1040 Solar rides:
-
-                    Run: `python3 fetch_gps_routes.py`
-
-                    This will download GPX files from Garmin Connect for all outdoor cycling activities
-                    and create a heatmap of your routes.
-
-                    **Note:** Peloton rides don't have GPS data (indoor workouts).
-                    """)
-
-                    # Show location breakdown from activity names
-                    cycling_activities = activities_df[activities_df['activity_type'].str.contains('cycling|biking', case=False, na=False, regex=True)]
-                    if not cycling_activities.empty and 'name' in cycling_activities.columns:
-                        location_counts = {}
-                        for name in cycling_activities['name']:
-                            if 'North Richland Hills' in str(name):
-                                location_counts['North Richland Hills'] = location_counts.get('North Richland Hills', 0) + 1
-                            elif 'Boulder' in str(name):
-                                location_counts['Boulder'] = location_counts.get('Boulder', 0) + 1
-                            elif 'Cycling' in str(name) or 'Road Biking' in str(name):
-                                location_counts['Other'] = location_counts.get('Other', 0) + 1
-
-                        if location_counts:
-                            st.subheader("Ride Locations")
-                            cols = st.columns(len(location_counts))
-                            for i, (location, count) in enumerate(location_counts.items()):
-                                with cols[i]:
-                                    st.metric(location, count)
-
-            except Exception as e:
-                st.error(f"Error loading route data: {e}")
-        else:
-            st.info("""
-            **🚴 GPS Route Data Not Available**
-
-            To load GPS route data from your Garmin Edge 1040 Solar rides:
-
-            Run: `python3 fetch_gps_routes.py`
-
-            This will download GPX files from Garmin Connect for all outdoor cycling activities.
-            """)
 
         # Footer
         st.divider()

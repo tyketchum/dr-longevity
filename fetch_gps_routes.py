@@ -36,28 +36,36 @@ def parse_gpx(gpx_bytes):
         return []
 
 
-def fetch_cycling_routes(days=180, limit=50):
-    """Fetch GPS coordinates from recent outdoor cycling activities by downloading GPX files"""
+def fetch_cycling_routes(days=None, limit=None):
+    """Fetch GPS coordinates from ALL outdoor cycling activities by downloading GPX files"""
 
     print("🔐 Logging into Garmin Connect...")
     garmin = Garmin(os.getenv('GARMIN_EMAIL'), os.getenv('GARMIN_PASSWORD'))
     garmin.login()
     print("✅ Connected to Garmin Connect")
 
-    print(f"\n📡 Fetching cycling activities from last {days} days...")
-    start_date = (datetime.now() - timedelta(days=days)).date()
-    activities = garmin.get_activities_by_date(
-        start_date.isoformat(),
-        datetime.now().date().isoformat(),
-        activitytype=None  # Get all activities, filter below
-    )
+    if days:
+        print(f"\n📡 Fetching cycling activities from last {days} days...")
+        start_date = (datetime.now() - timedelta(days=days)).date()
+        activities = garmin.get_activities_by_date(
+            start_date.isoformat(),
+            datetime.now().date().isoformat(),
+            activitytype=None
+        )
+    else:
+        print(f"\n📡 Fetching ALL cycling activities from your entire Garmin history...")
+        # Fetch all activities (uses pagination internally)
+        activities = garmin.get_activities(0, 1000)  # Get up to 1000 activities
 
     # Filter for outdoor cycling activities
     cycling_types = ['cycling', 'road_biking', 'gravel_cycling', 'mountain_biking']
     outdoor_cycling = [
         act for act in activities
         if any(act_type in act.get('activityType', {}).get('typeKey', '').lower() for act_type in cycling_types)
-    ][:limit]
+    ]
+
+    if limit:
+        outdoor_cycling = outdoor_cycling[:limit]
 
     print(f"🚴 Found {len(outdoor_cycling)} outdoor cycling activities")
 
@@ -105,4 +113,5 @@ def fetch_cycling_routes(days=180, limit=50):
     return routes
 
 if __name__ == '__main__':
-    routes = fetch_cycling_routes(days=180, limit=50)
+    # Fetch ALL cycling activities from entire Garmin history
+    routes = fetch_cycling_routes(days=None, limit=None)
