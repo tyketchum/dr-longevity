@@ -891,25 +891,32 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
                     # Create heatmap
                     st.subheader("Route Heatmap")
 
-                    # Get all coordinates
+                    # Get all coordinates and downsample for performance
                     all_coords = []
                     for route in routes:
                         all_coords.extend(route['coordinates'])
 
                     if all_coords:
+                        # Downsample GPS points for faster rendering (take every 10th point)
+                        # This reduces 1.5M points to ~150K while preserving route patterns
+                        sample_rate = 10
+                        sampled_coords = all_coords[::sample_rate]
+
+                        st.info(f"⏳ Rendering heatmap with {len(sampled_coords):,} GPS points (sampled from {len(all_coords):,} total points)...")
+
                         # Create map centered on average location
-                        avg_lat = sum(coord[0] for coord in all_coords) / len(all_coords)
-                        avg_lon = sum(coord[1] for coord in all_coords) / len(all_coords)
+                        avg_lat = sum(coord[0] for coord in sampled_coords) / len(sampled_coords)
+                        avg_lon = sum(coord[1] for coord in sampled_coords) / len(sampled_coords)
 
                         m = folium.Map(location=[avg_lat, avg_lon], zoom_start=12)
 
-                        # Add heatmap layer
-                        HeatMap(all_coords, radius=15, blur=25).add_to(m)
+                        # Add heatmap layer with optimized parameters
+                        HeatMap(sampled_coords, radius=15, blur=25, max_zoom=13).add_to(m)
 
                         # Display map
                         folium_static(m, width=800, height=600)
 
-                        st.caption(f"📍 Showing {len(routes)} routes with {len(all_coords)} GPS points")
+                        st.caption(f"📍 Showing {len(routes)} routes • Sampled {len(sampled_coords):,} of {len(all_coords):,} GPS points for optimal performance")
                     else:
                         st.info("GPS data fetched but no coordinates available")
                 else:
