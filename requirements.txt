@@ -6,3 +6,5 @@ garminconnect
 garth
 python-dotenv
 supabase
+folium
+streamlit-folium
