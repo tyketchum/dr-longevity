@@ -46,7 +46,11 @@
       "Bash(git pull:*)",
       "Bash(git mv:*)",
       "Bash(git rm:*)",
-      "Bash(find:*)"
+      "Bash(find:*)",
+      "Bash(kill:*)",
+      "Bash(if grep -q \"Enhanced sync complete\" sync_progress.log)",
+      "Bash(then echo \"🎉 YES! Sync is complete!\" echo \"\" tail -50 sync_progress.log)",
+      "Bash(gh auth:*)"
     ],
     "deny": [],
     "ask": []
