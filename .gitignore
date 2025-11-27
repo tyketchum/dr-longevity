@@ -57,3 +57,4 @@ cycling_routes.json
 # Parquet data files (generated locally)
 data/
 *.parquet
+INTERVIEW_TALK_TRACK.md
