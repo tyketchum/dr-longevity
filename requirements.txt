@@ -10,3 +10,7 @@ folium
 streamlit-folium
 requests
 anthropic
+
+# Open Data Formats
+duckdb
+pyarrow

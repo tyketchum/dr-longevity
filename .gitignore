@@ -53,3 +53,7 @@ backups/
 .archive/
 cycling_routes.json
 .claude/settings.local.json
+
+# Parquet data files (generated locally)
+data/
+*.parquet
