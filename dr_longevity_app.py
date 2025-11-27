@@ -1,6 +1,59 @@
 """
 Dr. Longevity App
 Track your workouts and fitness progress from Garmin Connect
+
+DESIGN SYSTEM DOCUMENTATION
+===========================
+
+Color Palette:
+--------------
+- Primary (#0066CC): Trust, professional - used for CTAs and primary actions
+- Secondary (#FF6B35): Energy, enthusiasm - used for highlights and secondary actions
+- Success (#059669): Positive feedback and successful states
+- Warning (#F59E0B): Cautionary information
+- Danger (#ef4444): Errors and critical actions
+- Info (#8B5CF6): Informational messages
+- Zone Colors: Progressive intensity scale (blue → green → yellow → orange → red)
+  - Zone 1 (#3b82f6): Recovery/Easy (50-60% max HR)
+  - Zone 2 (#10b981): Endurance (60-70% max HR)
+  - Zone 3 (#f59e0b): Tempo (70-80% max HR)
+  - Zone 4 (#f97316): Threshold (80-90% max HR)
+  - Zone 5 (#ef4444): VO2 Max (90-100% max HR)
+
+Typography:
+-----------
+- Font Family: Inter (Google Fonts) - Clean, modern sans-serif
+- Font Scale: Based on 16px base
+  - Small: 14px (0.875rem)
+  - Base: 16px (1rem)
+  - Large: 18px (1.125rem)
+  - XL: 20px (1.25rem)
+  - 2XL: 24px (1.5rem)
+  - 3XL: 32px (2rem)
+- Line Heights:
+  - Tight (1.2): Headlines and metrics for visual impact
+  - Normal (1.5): Subheadings and UI text
+  - Relaxed (1.6): Body text for optimal readability
+
+Spacing:
+--------
+- Base Unit: 8px (0.5rem)
+- Scale: 4px, 8px, 16px, 24px, 32px, 48px
+- Rationale: 8px base unit provides flexible scaling and aligns with common device pixels
+
+Accessibility:
+--------------
+- Focus states: 3px outline with 2px offset for keyboard navigation
+- Color contrast: All text meets WCAG AA standards
+- Interactive elements: Clear hover and active states
+- Responsive design: Mobile-first with breakpoint at 768px
+
+Component Patterns:
+-------------------
+- Metrics: Large numbers with contextual help text
+- Tabs: Clean navigation with active state indicators
+- Buttons: Clear primary/secondary hierarchy
+- Data tables: Consistent formatting and responsive behavior
 """
 
 import streamlit as st
@@ -35,53 +88,149 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS - Enhanced Design System
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+    /* Design System: CSS Variables */
+    :root {
+        /* Color Tokens */
+        --color-primary: #0066CC;
+        --color-secondary: #FF6B35;
+        --color-success: #059669;
+        --color-warning: #F59E0B;
+        --color-danger: #ef4444;
+        --color-info: #8B5CF6;
+        --color-neutral: #6B7280;
+
+        /* Training Zone Colors */
+        --color-zone1: #3b82f6;
+        --color-zone2: #10b981;
+        --color-zone3: #f59e0b;
+        --color-zone4: #f97316;
+        --color-zone5: #ef4444;
+
+        /* Spacing Scale (8px base unit) */
+        --space-xs: 0.25rem;  /* 4px */
+        --space-sm: 0.5rem;   /* 8px */
+        --space-md: 1rem;     /* 16px */
+        --space-lg: 1.5rem;   /* 24px */
+        --space-xl: 2rem;     /* 32px */
+        --space-2xl: 3rem;    /* 48px */
+
+        /* Typography Scale */
+        --font-size-sm: 0.875rem;   /* 14px */
+        --font-size-base: 1rem;     /* 16px */
+        --font-size-lg: 1.125rem;   /* 18px */
+        --font-size-xl: 1.25rem;    /* 20px */
+        --font-size-2xl: 1.5rem;    /* 24px */
+        --font-size-3xl: 2rem;      /* 32px */
+
+        /* Line Heights */
+        --line-height-tight: 1.2;
+        --line-height-normal: 1.5;
+        --line-height-relaxed: 1.6;
+    }
+
+    /* Base Typography */
     html, body, [class*="css"] {
         font-family: 'Inter', sans-serif;
+        line-height: var(--line-height-relaxed);
     }
 
-    [data-testid="stMetricValue"] {
-        font-size: 2rem;
-        font-weight: 600;
-    }
-
-    .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
-    }
-
+    /* Headings with proper line-height */
     h1 {
         font-weight: 700;
-        margin-bottom: 0.5rem;
+        margin-bottom: var(--space-sm);
+        line-height: var(--line-height-tight);
     }
 
     h2 {
         font-weight: 600;
-        margin-top: 2rem;
-        margin-bottom: 1rem;
+        margin-top: var(--space-xl);
+        margin-bottom: var(--space-md);
+        line-height: var(--line-height-normal);
+    }
+
+    h3 {
+        font-weight: 600;
+        line-height: var(--line-height-normal);
+    }
+
+    /* Paragraph spacing */
+    p {
+        line-height: var(--line-height-relaxed);
+        margin-bottom: var(--space-md);
+    }
+
+    /* Metric styling */
+    [data-testid="stMetricValue"] {
+        font-size: var(--font-size-3xl);
+        font-weight: 600;
+        line-height: var(--line-height-tight);
+    }
+
+    /* Layout spacing using scale */
+    .block-container {
+        padding-top: var(--space-xl);
+        padding-bottom: var(--space-xl);
+    }
+
+    /* Accessibility: Focus States */
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible,
+    [tabindex]:focus-visible {
+        outline: 3px solid var(--color-primary);
+        outline-offset: 2px;
+        border-radius: 4px;
+    }
+
+    /* Button styling with color variables */
+    .stButton > button {
+        transition: all 0.2s ease;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 102, 204, 0.2);
+    }
+
+    .stButton > button:active {
+        transform: translateY(0);
+    }
+
+    /* Links with proper focus states */
+    a:focus-visible {
+        outline: 3px solid var(--color-primary);
+        outline-offset: 2px;
+    }
+
+    /* Dividers using spacing scale */
+    hr {
+        margin-top: var(--space-xl);
+        margin-bottom: var(--space-xl);
     }
 
     /* Mobile responsiveness */
     @media (max-width: 768px) {
         .block-container {
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-left: var(--space-md);
+            padding-right: var(--space-md);
         }
 
         [data-testid="stMetricValue"] {
-            font-size: 1.5rem;
+            font-size: var(--font-size-2xl);
         }
 
         h1 {
-            font-size: 1.8rem;
+            font-size: var(--font-size-2xl);
         }
 
         h2 {
-            font-size: 1.4rem;
+            font-size: var(--font-size-xl);
         }
 
         /* Stack columns vertically on mobile */
@@ -89,6 +238,11 @@ st.markdown("""
             width: 100% !important;
             flex: 100% !important;
         }
+    }
+
+    /* Improved readability for captions */
+    [data-testid="stCaption"] {
+        line-height: var(--line-height-normal);
     }
 </style>
 """, unsafe_allow_html=True)
@@ -426,7 +580,6 @@ def get_vo2max_rating(vo2max, age=35):
 def main():
     # Header
     st.title("🚴 Dr. Longevity")
-    st.caption("Track your workouts and fitness progress")
 
     # Sidebar
     with st.sidebar:
@@ -551,7 +704,7 @@ def main():
                 print(f"Using weight from database: {current_weight_kg} kg")
 
         # ===== TOP-LEVEL TABS =====
-        dashboard_tab, architecture_tab = st.tabs(["📊 Dashboard", "🏗️ Architecture & System Design"])
+        dashboard_tab, architecture_tab = st.tabs(["📊 Dashboard", "🏗️ Technical Architecture & System Design"])
 
         # ===== DASHBOARD TAB =====
         with dashboard_tab:
@@ -1372,8 +1525,8 @@ def main():
     
         # ===== ARCHITECTURE TAB =====
         with architecture_tab:
-            # Architecture & System Design
-            st.header("🏗️ Architecture & System Design")
+            # Technical Architecture & System Design
+            st.header("🏗️ Technical Architecture & System Design")
 
             st.markdown("""
             Beyond just building features, I've documented the architecture decisions, cost trade-offs, and scalability planning
