@@ -208,6 +208,34 @@ st.markdown("""
         outline-offset: 2px;
     }
 
+    /* Tabs - Make them more prominent and noticeable */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 1rem;
+        background-color: #f8f9fa;
+        padding: 0.5rem;
+        border-radius: 8px;
+        margin-top: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .stTabs [data-baseweb="tab"] {
+        padding: 1rem 2rem;
+        font-weight: 600;
+        font-size: 1.1rem;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+
+    .stTabs [data-baseweb="tab"]:hover {
+        background-color: #e9ecef;
+    }
+
+    .stTabs [aria-selected="true"] {
+        background-color: var(--color-primary);
+        color: white !important;
+        box-shadow: 0 2px 8px rgba(0, 102, 204, 0.3);
+    }
+
     /* Dividers using spacing scale */
     hr {
         margin-top: var(--space-xl);
@@ -703,8 +731,43 @@ def main():
                 current_weight_kg = float(weight_kg)
                 print(f"Using weight from database: {current_weight_kg} kg")
 
+        # ===== DUAL-PURPOSE APP EXPLANATION =====
+        with st.expander("ℹ️ Why I Built This App", expanded=True):
+            st.markdown("""
+            I'm using this project to track my cycling fitness while simultaneously experimenting with new data engineering tools and patterns.
+            This is my playground to stay sharp (physically and mentally) and test new ideas. You can explore both aspects below.
+            """)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("### 🏋️ Fitness Metrics")
+                st.markdown("""
+                My Garmin cycling data synced from my Edge 1040 Solar. I track things like:
+                - FTP (power output) and VO2 Max trends
+                - Training zones - am I following the 80/20 rule?
+                - Power curves and ride patterns
+                - Weekly/monthly volume and consistency
+                """)
+
+            with col2:
+                st.markdown("### 🛠️ Technical Architecture")
+                st.markdown("""
+                Behind the scenes, I documented my engineering decisions:
+                - Why I chose Supabase over self-hosted Postgres
+                - When it makes sense to migrate to Parquet/Iceberg
+                - Cost modeling at different scales (1 → 1M users)
+                - Database schema design and sync patterns
+                """)
+
+            st.info("💡 **Two ways to use this**: Track fitness data, or learn how to build scalable data apps.")
+
+        # Section Navigation - Make tabs more prominent
+        st.markdown("---")
+        st.markdown("### 👇 Choose a section to explore:")
+
         # ===== TOP-LEVEL TABS =====
-        dashboard_tab, architecture_tab = st.tabs(["📊 Dashboard", "🏗️ Technical Architecture & System Design"])
+        dashboard_tab, architecture_tab = st.tabs(["📊 Fitness Metrics", "🏗️ Technical Architecture & System Design"])
 
         # ===== DASHBOARD TAB =====
         with dashboard_tab:
