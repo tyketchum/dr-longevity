@@ -672,7 +672,11 @@ def main():
 
         # AI-Powered Training Recommendations
         if ANTHROPIC_AVAILABLE:
-            anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+            # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
+            try:
+                anthropic_api_key = st.secrets.get('ANTHROPIC_API_KEY', os.getenv('ANTHROPIC_API_KEY'))
+            except:
+                anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 
             if anthropic_api_key:
                 if ftp or current_vo2max:
@@ -681,7 +685,10 @@ def main():
                         st.markdown("**Get personalized recommendations to improve your metrics**")
 
                         # Check authentication for AI recommendations
-                        ai_password = os.getenv('AI_RECOMMENDATIONS_PASSWORD')
+                        try:
+                            ai_password = st.secrets.get('AI_RECOMMENDATIONS_PASSWORD', os.getenv('AI_RECOMMENDATIONS_PASSWORD'))
+                        except:
+                            ai_password = os.getenv('AI_RECOMMENDATIONS_PASSWORD')
                         if ai_password and not st.session_state.get('ai_authenticated'):
                             # Show login form
                             with st.form("ai_login_form"):
