@@ -1376,8 +1376,8 @@ def main():
             st.header("🏗️ Architecture & System Design")
 
             st.markdown("""
-            This section demonstrates strategic thinking about system architecture, scalability, and operational maturity.
-            Perfect for understanding how technical leaders approach real-world design decisions.
+            Beyond just building features, I've documented the architecture decisions, cost trade-offs, and scalability planning
+            that went into this app. This is how I think about system design - not just what to build, but when and why.
             """)
 
             tabs = st.tabs(["📐 Architecture", "📊 Performance", "💰 Cost & Scale", "🚀 Growth Strategy", "🏢 Multi-Tenant Design"])
@@ -1551,8 +1551,8 @@ def main():
                 st.subheader("Cost & Scalability Calculator")
 
                 st.markdown("""
-                Model the cost and architecture changes at different scales.
-                This demonstrates strategic thinking about when to migrate technologies.
+                I built this calculator to model how costs and architecture would change at different scales.
+                The key insight: know your thresholds before you hit them.
                 """)
 
                 # User count slider
@@ -1639,8 +1639,8 @@ def main():
                 st.subheader("3-Stage Scaling Strategy")
 
                 st.markdown("""
-                How this system would evolve from 1 user → 10K users → 1M users.
-                Demonstrates strategic thinking about growth and migration paths.
+                Here's how I'd evolve this architecture from 1 user → 10K users → 1M users.
+                Not hypothetical - these are real migration paths with specific cost and performance triggers.
                 """)
 
                 col1, col2, col3 = st.columns(3)
@@ -1742,8 +1742,8 @@ def main():
                 st.subheader("Multi-Tenant Architecture Considerations")
 
                 st.markdown("""
-                If this were a product serving multiple users, here's how the architecture would change.
-                Demonstrates thinking about data isolation, security, and scalability.
+                If I productized this for multiple users, the biggest challenge would be data isolation.
+                Here's how I'd approach multi-tenancy - from simple (Row-Level Security) to complex (database-per-tenant).
                 """)
 
                 col1, col2 = st.columns(2)
