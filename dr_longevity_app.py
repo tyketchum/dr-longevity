@@ -674,29 +674,43 @@ def main():
         if ANTHROPIC_AVAILABLE:
             anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 
-            if anthropic_api_key and (ftp or current_vo2max):
-                with st.expander("🤖 AI Training Recommendations", expanded=False):
-                    st.markdown("**Get personalized recommendations to improve your metrics**")
+            if anthropic_api_key:
+                if ftp or current_vo2max:
+                    # Has API key AND fitness data - show recommendations
+                    with st.expander("🤖 AI Training Recommendations", expanded=False):
+                        st.markdown("**Get personalized recommendations to improve your metrics**")
 
-                    if st.button("Generate Recommendations", use_container_width=True):
-                        with st.spinner("Analyzing your training data..."):
-                            try:
-                                client = Anthropic(api_key=anthropic_api_key)
+                        # Check authentication for AI recommendations
+                        ai_password = os.getenv('AI_RECOMMENDATIONS_PASSWORD')
+                        if ai_password and not st.session_state.get('ai_authenticated'):
+                            # Show login form
+                            with st.form("ai_login_form"):
+                                password_input = st.text_input("Password", type="password", help="Enter password to generate AI recommendations")
+                                if st.form_submit_button("Unlock AI Recommendations"):
+                                    if password_input == ai_password:
+                                        st.session_state['ai_authenticated'] = True
+                                        st.rerun()
+                                    else:
+                                        st.error("Incorrect password")
+                        elif st.button("Generate Recommendations", use_container_width=True):
+                            with st.spinner("Analyzing your training data..."):
+                                try:
+                                    client = Anthropic(api_key=anthropic_api_key)
 
-                                # Prepare training data for AI analysis
-                                analysis_data = {
-                                    "ftp": ftp if ftp else None,
-                                    "watts_per_kg": watts_per_kg if ftp and current_weight_kg else None,
-                                    "vo2_max": current_vo2max if current_vo2max else None,
-                                    "recent_workouts": len(activities_df[activities_df['date'] >= (datetime.now() - timedelta(days=30))]),
-                                    "total_workouts": len(activities_df),
-                                    "avg_weekly_workouts": len(activities_df) / ((activities_df['date'].max() - activities_df['date'].min()).days / 7) if len(activities_df) > 0 else 0,
-                                    "ftp_trend": ftp_delta if ftp and len(ftp_trend_data) >= 2 else "No trend data",
-                                    "vo2_trend": vo2_delta if current_vo2max and len(vo2_trend_data) >= 2 else "No trend data"
-                                }
+                                    # Prepare training data for AI analysis
+                                    analysis_data = {
+                                        "ftp": ftp if ftp else None,
+                                        "watts_per_kg": watts_per_kg if ftp and current_weight_kg else None,
+                                        "vo2_max": current_vo2max if current_vo2max else None,
+                                        "recent_workouts": len(activities_df[activities_df['date'] >= (datetime.now() - timedelta(days=30))]),
+                                        "total_workouts": len(activities_df),
+                                        "avg_weekly_workouts": len(activities_df) / ((activities_df['date'].max() - activities_df['date'].min()).days / 7) if len(activities_df) > 0 else 0,
+                                        "ftp_trend": ftp_delta if ftp and len(ftp_trend_data) >= 2 else "No trend data",
+                                        "vo2_trend": vo2_delta if current_vo2max and len(vo2_trend_data) >= 2 else "No trend data"
+                                    }
 
-                                # Build prompt
-                                prompt = f"""You are an expert cycling coach and sports scientist. Analyze this athlete's current fitness metrics and provide specific, actionable recommendations to improve their FTP and VO2 Max.
+                                    # Build prompt
+                                    prompt = f"""You are an expert cycling coach and sports scientist. Analyze this athlete's current fitness metrics and provide specific, actionable recommendations to improve their FTP and VO2 Max.
 
 Current Metrics:
 - FTP: {analysis_data['ftp']}W ({analysis_data['watts_per_kg']:.2f} W/kg) - Trend: {analysis_data['ftp_trend']}
@@ -711,22 +725,27 @@ Provide 3-5 specific, actionable recommendations to improve these metrics. For e
 
 Focus on evidence-based interventions that are proven to improve FTP and VO2 Max. Keep recommendations practical and achievable."""
 
-                                # Call Claude API
-                                response = client.messages.create(
-                                    model="claude-3-5-sonnet-20241022",
-                                    max_tokens=1500,
-                                    messages=[{"role": "user", "content": prompt}]
-                                )
+                                    # Call Claude API
+                                    response = client.messages.create(
+                                        model="claude-sonnet-4-5-20250929",
+                                        max_tokens=1500,
+                                        messages=[{"role": "user", "content": prompt}]
+                                    )
 
-                                # Display recommendations
-                                st.markdown("---")
-                                st.markdown(response.content[0].text)
-                                st.markdown("---")
-                                st.caption("💡 Generated by Claude AI • Always consult with a coach or medical professional before major training changes")
+                                    # Display recommendations
+                                    st.markdown("---")
+                                    st.markdown(response.content[0].text)
+                                    st.markdown("---")
+                                    st.caption("💡 Generated by Claude AI • Always consult with a coach or medical professional before major training changes")
 
-                            except Exception as e:
-                                st.error(f"Error generating recommendations: {str(e)}")
-            elif not anthropic_api_key:
+                                except Exception as e:
+                                    st.error(f"Error generating recommendations: {str(e)}")
+                else:
+                    # Has API key but NO fitness data
+                    with st.expander("🤖 AI Training Recommendations"):
+                        st.warning("⚠️ **AI recommendations require FTP or VO2 Max data**\n\nSync your Garmin activities to get fitness metrics, or manually enter your FTP in the 'Cycling Performance' section above.")
+            else:
+                # No API key configured
                 with st.expander("🤖 AI Training Recommendations"):
                     st.info("💡 **Want personalized AI-powered training recommendations?**\n\nAdd your Anthropic API key to `.env`:\n```\nANTHROPIC_API_KEY=your_key_here\n```\n\nGet a key at: https://console.anthropic.com/")
 
