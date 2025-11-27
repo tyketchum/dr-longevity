@@ -673,10 +673,15 @@ def main():
         # AI-Powered Training Recommendations
         if ANTHROPIC_AVAILABLE:
             # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
+            anthropic_api_key = None
             try:
                 anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
-            except:
+            except (KeyError, FileNotFoundError, AttributeError) as e:
+                # Secrets not found, try environment variable
                 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+            except Exception as e:
+                # Unexpected error - show debug info
+                st.error(f"Debug: Error accessing secrets: {type(e).__name__}: {str(e)}")
 
             if anthropic_api_key:
                 if ftp or current_vo2max:
