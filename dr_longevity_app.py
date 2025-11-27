@@ -1373,7 +1373,6 @@ def main():
         # ===== ARCHITECTURE TAB =====
         with architecture_tab:
             # Architecture & System Design
-            st.divider()
             st.header("🏗️ Architecture & System Design")
 
             st.markdown("""
