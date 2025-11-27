@@ -63,6 +63,32 @@ st.markdown("""
         margin-top: 2rem;
         margin-bottom: 1rem;
     }
+
+    /* Mobile responsiveness */
+    @media (max-width: 768px) {
+        .block-container {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        [data-testid="stMetricValue"] {
+            font-size: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+        }
+
+        /* Stack columns vertically on mobile */
+        [data-testid="column"] {
+            width: 100% !important;
+            flex: 100% !important;
+        }
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -450,36 +476,28 @@ def main():
         # Tech Stack Explanation
         st.divider()
         with st.expander("🛠️ Tech Stack & Architecture"):
-            st.markdown("""
-            **Streamlit Standalone vs Snowflake**
+            col1, col2 = st.columns(2)
 
-            This app uses **Standalone Streamlit** (open-source Python framework):
-            - ✅ Self-hosted on any infrastructure (local, cloud, serverless)
-            - ✅ Full control over dependencies, data sources, and deployment
-            - ✅ Free and open-source - no vendor lock-in
-            - ✅ Deploy anywhere: AWS, GCP, Azure, Vercel, or locally
+            with col1:
+                st.markdown("**Stack**")
+                st.markdown("""
+                - Frontend: Streamlit
+                - Backend: Python + Garmin API
+                - Database: Supabase (PostgreSQL)
+                - Deploy: Streamlit Cloud
+                - Viz: Plotly, Folium
+                - AI: Claude Sonnet 4.5
+                """)
 
-            **Snowflake Streamlit** (Streamlit in Snowflake):
-            - Native app framework inside Snowflake workspaces
-            - Tightly coupled to Snowflake data warehouse
-            - Managed hosting within Snowflake environment
-            - Great for Snowflake-centric workflows but less flexible
-
-            **Our Stack**:
-            - **Frontend**: Streamlit (Python) - UI components & visualization
-            - **Backend**: Python with Garmin Connect API integration
-            - **Database**: Supabase (PostgreSQL) - open-source Firebase alternative
-            - **Deployment**: Streamlit Community Cloud (free tier)
-            - **Automation**: GitHub Actions for daily data sync
-            - **Viz Libraries**: Plotly (interactive charts), Folium (maps)
-
-            **Why Standalone Streamlit?**
-            - Flexibility to use any database (not just Snowflake)
-            - Cost-effective (free hosting options)
-            - Modern Python ecosystem (pandas, plotly, etc.)
-            - Easy CI/CD with GitHub Actions
-            - Perfect for personal/small team dashboards
-            """)
+            with col2:
+                st.markdown("**Why Standalone?**")
+                st.markdown("""
+                - Any database (not just Snowflake)
+                - Free & open-source
+                - Modern Python ecosystem
+                - Easy GitHub Actions CI/CD
+                - Deploy anywhere
+                """)
 
 
         st.divider()
