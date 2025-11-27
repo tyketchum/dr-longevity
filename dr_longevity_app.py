@@ -672,13 +672,25 @@ def main():
 
         # AI-Powered Training Recommendations
         if ANTHROPIC_AVAILABLE:
+            # Debug: Show what's in secrets
+            try:
+                available_secrets = list(st.secrets.keys())
+                st.info(f"🔍 Debug: Available secrets: {available_secrets}")
+            except Exception as e:
+                st.info(f"🔍 Debug: Can't read secrets: {type(e).__name__}")
+
             # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
             anthropic_api_key = None
             try:
                 anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
+                st.success(f"✅ Debug: Got API key from secrets (length: {len(anthropic_api_key)})")
             except (KeyError, FileNotFoundError, AttributeError) as e:
                 # Secrets not found, try environment variable
                 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+                if anthropic_api_key:
+                    st.success(f"✅ Debug: Got API key from env var (length: {len(anthropic_api_key)})")
+                else:
+                    st.warning("⚠️ Debug: No API key found in secrets or env vars")
             except Exception as e:
                 # Unexpected error - show debug info
                 st.error(f"Debug: Error accessing secrets: {type(e).__name__}: {str(e)}")
