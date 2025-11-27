@@ -674,7 +674,7 @@ def main():
         if ANTHROPIC_AVAILABLE:
             # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
             try:
-                anthropic_api_key = st.secrets.get('ANTHROPIC_API_KEY', os.getenv('ANTHROPIC_API_KEY'))
+                anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
             except:
                 anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
 
@@ -686,7 +686,7 @@ def main():
 
                         # Check authentication for AI recommendations
                         try:
-                            ai_password = st.secrets.get('AI_RECOMMENDATIONS_PASSWORD', os.getenv('AI_RECOMMENDATIONS_PASSWORD'))
+                            ai_password = st.secrets['AI_RECOMMENDATIONS_PASSWORD']
                         except:
                             ai_password = os.getenv('AI_RECOMMENDATIONS_PASSWORD')
                         if ai_password and not st.session_state.get('ai_authenticated'):
