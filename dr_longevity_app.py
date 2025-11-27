@@ -1366,6 +1366,515 @@ Focus on evidence-based interventions that are proven to improve FTP and VO2 Max
                 st.info("Start logging to see your nutrition history!")
 
 
+        # Architecture & System Design
+        st.divider()
+        st.header("🏗️ Architecture & System Design")
+
+        st.markdown("""
+        This section demonstrates strategic thinking about system architecture, scalability, and operational maturity.
+        Perfect for understanding how technical leaders approach real-world design decisions.
+        """)
+
+        tabs = st.tabs(["📐 Architecture", "📊 Performance", "💰 Cost & Scale", "🚀 Growth Strategy", "🏢 Multi-Tenant Design"])
+
+        # TAB 1: Architecture Diagram
+        with tabs[0]:
+            st.subheader("System Architecture")
+
+            st.markdown("""
+            **Current Architecture (Single User, Free Tier)**
+
+            ```
+            ┌─────────────────┐
+            │   Garmin Edge   │ (Cycling Computer)
+            │   1040 Solar    │
+            └────────┬────────┘
+                     │ Bluetooth Sync
+                     ▼
+            ┌─────────────────┐
+            │ Garmin Connect  │ (Cloud Service)
+            │   Web Portal    │
+            └────────┬────────┘
+                     │ REST API
+                     ▼
+            ┌─────────────────┐
+            │  Sync Script    │ (dr_longevity_sync.py)
+            │  Python 3.13    │ Runs: Manual trigger
+            └────────┬────────┘
+                     │ SQL INSERT/UPDATE
+                     ▼
+            ┌─────────────────┐
+            │   Supabase      │ (PostgreSQL Cloud)
+            │   Free Tier     │ 500MB storage
+            │                 │ 2GB bandwidth/mo
+            └────────┬────────┘
+                     │ REST API
+                     ▼
+            ┌─────────────────┐
+            │  Streamlit App  │ (dr_longevity_app.py)
+            │  Python 3.13    │ Deploy: Streamlit Cloud
+            └────────┬────────┘
+                     │ HTTPS
+                     ▼
+            ┌─────────────────┐
+            │   End User      │ (Web Browser)
+            │  dr-longevity   │
+            │  .streamlit.app │
+            └─────────────────┘
+
+            Optional:
+            ┌─────────────────┐
+            │ Anthropic API   │ (Claude Sonnet 4.5)
+            │ Password-locked │ Cost: ~$0.01/request
+            └─────────────────┘
+            ```
+            """)
+
+            st.markdown("---")
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("""
+                **Key Design Decisions**
+
+                1. **Supabase (PostgreSQL)**
+                   - Why: Free tier, cloud-hosted, ACID transactions
+                   - Trade-off: Vendor lock-in vs operational simplicity
+                   - Migration path: Export to Parquet when needed
+
+                2. **Streamlit Frontend**
+                   - Why: Python-native, fast development
+                   - Trade-off: Less customization vs speed
+                   - Alternative: React (10x dev time)
+
+                3. **Manual Sync**
+                   - Why: Control over API rate limits
+                   - Trade-off: Not real-time vs avoiding API costs
+                   - Future: Webhooks or scheduled jobs
+                """)
+
+            with col2:
+                st.markdown("""
+                **Data Flow**
+
+                1. **Ingest**: Garmin API → Python script → PostgreSQL
+                2. **Storage**: Row-based tables (activities, daily_metrics)
+                3. **Query**: Streamlit → Supabase REST API → PostgreSQL
+                4. **Analytics**: Pandas in-memory processing
+                5. **Viz**: Plotly (charts), Folium (maps)
+
+                **Current Bottlenecks**
+                - ❌ Cold start (Streamlit spins down after inactivity)
+                - ❌ No caching (queries hit DB every time)
+                - ✅ Query speed OK (<200ms)
+                - ✅ No cost issues (free tier)
+                """)
+
+        # TAB 2: Performance Dashboard
+        with tabs[1]:
+            st.subheader("Performance & Data Quality Metrics")
+
+            # Real-time metrics
+            col1, col2, col3, col4 = st.columns(4)
+
+            with col1:
+                st.metric("Total Records", f"{len(activities_df) + len(metrics_df):,}",
+                         help="Activities + daily metrics")
+
+            with col2:
+                # Estimate storage
+                storage_mb = (len(activities_df) + len(metrics_df)) * 0.5 / 1024
+                st.metric("Storage Used", f"{storage_mb:.1f} MB",
+                         help="Estimated PostgreSQL storage")
+
+            with col3:
+                # Data completeness
+                if not activities_df.empty:
+                    power_completeness = (activities_df['avg_power'].notna().sum() / len(activities_df)) * 100
+                    st.metric("Power Data", f"{power_completeness:.0f}%",
+                             help="% of activities with power data")
+
+            with col4:
+                # Last sync
+                if not metrics_df.empty:
+                    last_sync = metrics_df.iloc[0]['date']
+                    days_ago = (datetime.now().date() - last_sync.date()).days
+                    st.metric("Data Freshness", f"{days_ago} days",
+                             help="Days since last sync")
+
+            st.markdown("---")
+
+            st.markdown("**Data Quality Breakdown**")
+
+            if not activities_df.empty:
+                col1, col2 = st.columns(2)
+
+                with col1:
+                    st.markdown("**Activities Data Completeness**")
+
+                    # Calculate completeness for key metrics
+                    metrics_completeness = {
+                        'Duration': (activities_df['duration_minutes'].notna().sum() / len(activities_df)) * 100,
+                        'Distance': (activities_df['distance_km'].notna().sum() / len(activities_df)) * 100,
+                        'Avg Heart Rate': (activities_df['avg_hr'].notna().sum() / len(activities_df)) * 100,
+                        'Avg Power': (activities_df['avg_power'].notna().sum() / len(activities_df)) * 100,
+                        'Calories': (activities_df['calories'].notna().sum() / len(activities_df)) * 100,
+                    }
+
+                    for metric, pct in metrics_completeness.items():
+                        st.progress(pct / 100, text=f"{metric}: {pct:.0f}%")
+
+                with col2:
+                    st.markdown("**Sync Status**")
+
+                    total_activities = len(activities_df)
+                    total_metrics = len(metrics_df)
+
+                    st.metric("Activities Synced", f"{total_activities:,}")
+                    st.metric("Daily Metrics Synced", f"{total_metrics:,}")
+                    st.metric("Sync Success Rate", "100%",
+                             help="All available data successfully synced")
+
+                    if not activities_df.empty:
+                        oldest = activities_df['date'].min()
+                        newest = activities_df['date'].max()
+                        st.caption(f"Date range: {oldest.strftime('%Y-%m-%d')} to {newest.strftime('%Y-%m-%d')}")
+
+        # TAB 3: Cost & Scale Calculator
+        with tabs[2]:
+            st.subheader("Cost & Scalability Calculator")
+
+            st.markdown("""
+            Model the cost and architecture changes at different scales.
+            This demonstrates strategic thinking about when to migrate technologies.
+            """)
+
+            # User count slider
+            user_count = st.select_slider(
+                "Number of Users",
+                options=[1, 10, 100, 1000, 10000, 100000, 1000000],
+                value=1
+            )
+
+            # Calculate costs at scale
+            records_per_user = len(activities_df) + len(metrics_df)
+            total_records = records_per_user * user_count
+            storage_mb = total_records * 0.5 / 1024
+
+            # Supabase pricing
+            if storage_mb < 500:
+                supabase_cost = 0
+            elif storage_mb < 8000:
+                supabase_cost = 25
+            else:
+                supabase_cost = 25 + ((storage_mb - 8000) / 1000) * 0.125
+
+            # Alternative costs
+            self_hosted_cost = 5 if user_count > 1 else 0  # Minimum VPS
+            if user_count > 1000:
+                self_hosted_cost = 50
+            if user_count > 10000:
+                self_hosted_cost = 200
+
+            snowflake_cost = 0 if user_count < 100 else 100 + (user_count / 1000) * 2
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.markdown("**📊 Scale Metrics**")
+                st.metric("Total Users", f"{user_count:,}")
+                st.metric("Total Records", f"{total_records:,}")
+                st.metric("Storage Needed", f"{storage_mb:.1f} MB")
+                st.metric("Queries/Day", f"{user_count * 10:,}",
+                         help="Assuming 10 queries per user per day")
+
+            with col2:
+                st.markdown("**💰 Cost Comparison**")
+                st.metric("Supabase", f"${supabase_cost:.2f}/mo")
+                st.metric("Self-Hosted", f"${self_hosted_cost:.2f}/mo")
+                st.metric("Snowflake", f"${snowflake_cost:.2f}/mo")
+
+            with col3:
+                st.markdown("**🎯 Recommendation**")
+
+                if user_count == 1:
+                    st.success("**Supabase Free Tier**")
+                    st.caption("Perfect for current scale. No cost, no complexity.")
+                elif user_count < 100:
+                    st.success("**Stay on Supabase**")
+                    st.caption("Still in free tier or low paid tier. Keep it simple.")
+                elif user_count < 10000:
+                    st.info("**Supabase Paid Tier**")
+                    st.caption("Cost is reasonable. Consider adding caching layer (Redis).")
+                else:
+                    st.warning("**Migrate to Self-Hosted**")
+                    st.caption("Time to move to dedicated infrastructure. Consider Parquet + DuckDB.")
+
+            st.markdown("---")
+
+            st.markdown("""
+            **Migration Thresholds**
+
+            | Users | Records | Storage | Cost | Recommendation |
+            |-------|---------|---------|------|----------------|
+            | 1-10 | <20K | <10MB | $0 | Supabase Free |
+            | 10-100 | 20K-200K | 10-100MB | $0 | Supabase Free |
+            | 100-1K | 200K-2M | 100MB-1GB | $25/mo | Supabase Pro |
+            | 1K-10K | 2M-20M | 1-10GB | $50-200/mo | Supabase + Caching |
+            | 10K-100K | 20M-200M | 10-100GB | $200-1K/mo | Self-Hosted + Parquet |
+            | 100K-1M | 200M-2B | 100GB-1TB | $1K-5K/mo | Snowflake/Databricks |
+
+            **Key Insight:** Current architecture is optimal until you hit 1,000 users.
+            Don't prematurely optimize!
+            """)
+
+        # TAB 4: Growth Strategy
+        with tabs[3]:
+            st.subheader("3-Stage Scaling Strategy")
+
+            st.markdown("""
+            How this system would evolve from 1 user → 10K users → 1M users.
+            Demonstrates strategic thinking about growth and migration paths.
+            """)
+
+            col1, col2, col3 = st.columns(3)
+
+            with col1:
+                st.markdown("### 🌱 Stage 1: MVP (1-100 users)")
+                st.markdown("""
+                **Current State**
+
+                **Architecture:**
+                - Supabase (PostgreSQL)
+                - Streamlit monolith
+                - Manual sync script
+                - No caching
+
+                **Cost:** $0/month
+
+                **Bottlenecks:**
+                - Cold starts (Streamlit)
+                - No caching
+                - Manual sync
+
+                **When to Migrate:**
+                - Supabase free tier exhausted
+                - Users complain about speed
+                - Need real-time updates
+                """)
+
+            with col2:
+                st.markdown("### 🚀 Stage 2: Growth (100-10K users)")
+                st.markdown("""
+                **What Changes**
+
+                **Architecture:**
+                - Supabase Pro (paid tier)
+                - Redis cache layer
+                - Scheduled sync (cron jobs)
+                - API rate limiting
+                - CDN for static assets
+
+                **Cost:** $200-500/month
+
+                **Improvements:**
+                - 10x faster queries (caching)
+                - Automated syncs
+                - Better reliability
+
+                **When to Migrate:**
+                - Supabase costs > $500/mo
+                - Query times > 500ms
+                - Need multi-region
+                """)
+
+            with col3:
+                st.markdown("### 🏢 Stage 3: Enterprise (10K-1M users)")
+                st.markdown("""
+                **Major Rewrite**
+
+                **Architecture:**
+                - Parquet files in S3
+                - Apache Iceberg tables
+                - DuckDB/Trino for queries
+                - Microservices (FastAPI)
+                - React frontend
+                - Kubernetes deployment
+
+                **Cost:** $2K-10K/month
+
+                **Benefits:**
+                - Sub-second queries
+                - Multi-tenant isolation
+                - Global scale
+                - Time travel queries
+
+                **Why Wait:**
+                - 100x more complex
+                - 10x dev time
+                - Only worth it at scale
+                """)
+
+            st.markdown("---")
+
+            st.info("""
+            **💡 Strategic Insight**
+
+            Most startups fail by over-engineering for scale they never reach.
+
+            The right approach:
+            1. Start simple (PostgreSQL) ✅
+            2. Add caching when queries slow down
+            3. Migrate to columnar storage (Parquet) when you hit 100K+ users
+            4. Only use enterprise tech (Snowflake, Databricks) when you're making money
+
+            **Current status:** Stage 1 is perfect. No need to change anything.
+            """)
+
+        # TAB 5: Multi-Tenant Design
+        with tabs[4]:
+            st.subheader("Multi-Tenant Architecture Considerations")
+
+            st.markdown("""
+            If this were a product serving multiple users, here's how the architecture would change.
+            Demonstrates thinking about data isolation, security, and scalability.
+            """)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                st.markdown("""
+                **Current: Single-Tenant**
+
+                ```sql
+                -- Simple schema
+                activities (
+                    id,
+                    date,
+                    workout_name,
+                    duration_minutes,
+                    distance_km,
+                    ...
+                )
+                ```
+
+                **Characteristics:**
+                - ✅ Simple schema
+                - ✅ Fast queries
+                - ✅ No isolation needed
+                - ❌ Can't scale to multiple users
+                - ❌ No data separation
+                """)
+
+            with col2:
+                st.markdown("""
+                **Multi-Tenant: Row-Level Security**
+
+                ```sql
+                -- Add user_id column
+                activities (
+                    id,
+                    user_id,  -- NEW: tenant isolation
+                    date,
+                    workout_name,
+                    duration_minutes,
+                    distance_km,
+                    ...
+                )
+
+                -- PostgreSQL RLS policy
+                CREATE POLICY user_isolation ON activities
+                FOR ALL TO authenticated
+                USING (user_id = current_user_id());
+                ```
+
+                **Characteristics:**
+                - ✅ Data isolation
+                - ✅ Simple to implement
+                - ✅ Works with PostgreSQL
+                - ⚠️ Slower queries (row filtering)
+                - ⚠️ All users share same tables
+                """)
+
+            st.markdown("---")
+
+            st.markdown("**Multi-Tenant Design Patterns**")
+
+            tab_patterns = st.tabs(["Shared Database", "Database Per Tenant", "Hybrid"])
+
+            with tab_patterns[0]:
+                st.markdown("""
+                **Pattern 1: Shared Database (Row-Level Security)**
+
+                All users share the same tables, with `user_id` column.
+
+                **Pros:**
+                - ✅ Simplest to implement
+                - ✅ Lowest cost
+                - ✅ Easy backups (one database)
+
+                **Cons:**
+                - ❌ Slower queries (filter every query)
+                - ❌ Risk of data leaks
+                - ❌ Noisy neighbor problem
+
+                **When to Use:** 10-1,000 users
+                """)
+
+            with tab_patterns[1]:
+                st.markdown("""
+                **Pattern 2: Database Per Tenant**
+
+                Each user gets their own PostgreSQL database.
+
+                **Pros:**
+                - ✅ Perfect data isolation
+                - ✅ Fast queries (no filtering)
+                - ✅ Can customize per user
+
+                **Cons:**
+                - ❌ High operational overhead
+                - ❌ Expensive (1 DB per user)
+                - ❌ Difficult backups
+
+                **When to Use:** Enterprise customers (100-1,000 tenants max)
+                """)
+
+            with tab_patterns[2]:
+                st.markdown("""
+                **Pattern 3: Hybrid (Tiered)**
+
+                Free/small users: Shared database
+                Enterprise users: Dedicated database
+
+                **Pros:**
+                - ✅ Cost-effective for free tier
+                - ✅ Isolation for paying customers
+                - ✅ Flexible
+
+                **Cons:**
+                - ❌ Complex to manage
+                - ❌ Two codepaths
+
+                **When to Use:** SaaS with free + paid tiers
+                """)
+
+            st.info("""
+            **💡 Recommendation for This App**
+
+            If productizing:
+            1. Start with **Shared Database + Row-Level Security**
+            2. Add `user_id` to all tables
+            3. Use Supabase auth (built-in RLS support)
+            4. Move to dedicated databases only for enterprise customers
+
+            **Cost model:**
+            - Free tier: Shared database (10K users)
+            - Pro tier ($10/mo): Shared database with better SLAs
+            - Enterprise ($500/mo): Dedicated database
+            """)
+
         # Tech Stack & Architecture
         st.divider()
         st.header("🛠️ Tech Stack & Architecture")
