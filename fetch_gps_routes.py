@@ -102,12 +102,23 @@ def fetch_cycling_routes(days=None, limit=None):
             print(f"     ❌ Error: {e}")
             continue
 
-    # Save routes to JSON file
-    output_file = 'cycling_routes.json'
-    with open(output_file, 'w') as f:
-        json.dump(routes, f, indent=2)
+    # Split routes into multiple files to stay under size limits
+    # Split into chunks (aim for ~50MB per file to stay well under 100MB)
+    chunk_size = len(routes) // 2 + 1 if len(routes) > 200 else len(routes)
 
-    print(f"\n✅ Saved {len(routes)} routes with GPS data to {output_file}")
+    print(f"\n💾 Splitting {len(routes)} routes into multiple files...")
+
+    for i, start_idx in enumerate(range(0, len(routes), chunk_size), 1):
+        chunk = routes[start_idx:start_idx + chunk_size]
+        filename = f'cycling_routes_part{i}.json'
+
+        with open(filename, 'w') as f:
+            json.dump(chunk, f, indent=2)
+
+        size_mb = os.path.getsize(filename) / (1024 * 1024)
+        print(f"  ✅ Created {filename}: {len(chunk)} routes, {size_mb:.1f}MB")
+
+    print(f"\n✅ Saved {len(routes)} routes with GPS data")
     print(f"📍 Total GPS points: {sum(len(r['coordinates']) for r in routes)}")
 
     return routes
