@@ -632,26 +632,49 @@ def main():
 
         st.divider()
 
-        if st.button("📥 Sync Garmin Data", use_container_width=True, type="primary"):
-            with st.spinner("Syncing data from Garmin Connect..."):
+        if st.button("📥 Sync All Data", use_container_width=True, type="primary", help="Sync from Garmin and Strava (includes Peloton)"):
+            with st.spinner("Syncing data from Garmin Connect and Strava..."):
                 try:
                     import subprocess
-                    result = subprocess.run(
-                        ["python3", "dr_longevity_sync.py"],
+
+                    # Sync Garmin data
+                    st.info("📡 Syncing Garmin data...")
+                    garmin_result = subprocess.run(
+                        ["python3", "dr_longevity_sync_improved.py"],
                         capture_output=True,
                         text=True,
                         cwd=os.path.dirname(__file__) or '.'
                     )
-                    if result.returncode == 0:
+
+                    if garmin_result.returncode != 0:
+                        st.error(f"❌ Garmin sync failed: {garmin_result.stderr}")
+                    else:
+                        st.success("✅ Garmin data synced!")
+
+                    # Sync Strava data (includes Peloton rides)
+                    st.info("📡 Syncing Strava data (Peloton rides)...")
+                    strava_result = subprocess.run(
+                        ["python3", "strava_sync.py"],
+                        capture_output=True,
+                        text=True,
+                        cwd=os.path.dirname(__file__) or '.'
+                    )
+
+                    if strava_result.returncode != 0:
+                        st.warning(f"⚠️ Strava sync had issues: {strava_result.stderr}")
+                    else:
+                        st.success("✅ Strava data synced!")
+
+                    # Refresh the app if at least one sync succeeded
+                    if garmin_result.returncode == 0 or strava_result.returncode == 0:
                         st.success("✅ Sync complete! Refreshing app...")
                         st.cache_data.clear()
                         st.rerun()
-                    else:
-                        st.error(f"❌ Sync failed: {result.stderr}")
+
                 except Exception as e:
                     st.error(f"❌ Error running sync: {str(e)}")
 
-        if st.button("🔄 Refresh Data", use_container_width=True, help="Clear cache and fetch latest data from database"):
+        if st.button("🔄 Refresh Display", use_container_width=True, help="Reload data from database without syncing"):
             st.cache_data.clear()
             st.rerun()
 

@@ -12,13 +12,30 @@ import time
 
 load_dotenv()
 
-# Strava API configuration
-STRAVA_CLIENT_ID = os.getenv('STRAVA_CLIENT_ID')
-STRAVA_CLIENT_SECRET = os.getenv('STRAVA_CLIENT_SECRET')
-STRAVA_REFRESH_TOKEN = os.getenv('STRAVA_REFRESH_TOKEN')
+# Try to get credentials from Streamlit secrets first (for cloud deployment)
+try:
+    import streamlit as st
+    if hasattr(st, 'secrets'):
+        STRAVA_CLIENT_ID = st.secrets.get("strava", {}).get("client_id") or os.getenv('STRAVA_CLIENT_ID')
+        STRAVA_CLIENT_SECRET = st.secrets.get("strava", {}).get("client_secret") or os.getenv('STRAVA_CLIENT_SECRET')
+        STRAVA_REFRESH_TOKEN = st.secrets.get("strava", {}).get("refresh_token") or os.getenv('STRAVA_REFRESH_TOKEN')
+        SUPABASE_URL = st.secrets.get("supabase", {}).get("url") or os.getenv('SUPABASE_URL')
+        SUPABASE_KEY = st.secrets.get("supabase", {}).get("key") or os.getenv('SUPABASE_KEY')
+    else:
+        STRAVA_CLIENT_ID = os.getenv('STRAVA_CLIENT_ID')
+        STRAVA_CLIENT_SECRET = os.getenv('STRAVA_CLIENT_SECRET')
+        STRAVA_REFRESH_TOKEN = os.getenv('STRAVA_REFRESH_TOKEN')
+        SUPABASE_URL = os.getenv('SUPABASE_URL')
+        SUPABASE_KEY = os.getenv('SUPABASE_KEY')
+except:
+    STRAVA_CLIENT_ID = os.getenv('STRAVA_CLIENT_ID')
+    STRAVA_CLIENT_SECRET = os.getenv('STRAVA_CLIENT_SECRET')
+    STRAVA_REFRESH_TOKEN = os.getenv('STRAVA_REFRESH_TOKEN')
+    SUPABASE_URL = os.getenv('SUPABASE_URL')
+    SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
 # Supabase configuration
-supabase = create_client(os.getenv('SUPABASE_URL'), os.getenv('SUPABASE_KEY'))
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 
 def get_strava_access_token():
