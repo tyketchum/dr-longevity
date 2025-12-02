@@ -1086,15 +1086,21 @@ def main():
                 )
 
             with col3:
-                # Weekly average workouts - whole number with goal context
+                # Weekly average workouts with goal progress
                 weekly_avg_int = int(round(weekly_avg))
-                progress_toward_goal = f"{weekly_avg_int}/5 workouts"
-                goal_status = "🎯 Meeting goal!" if weekly_avg >= 5 else f"📈 {5 - weekly_avg_int} more to reach goal"
+                workouts_to_goal = 5 - weekly_avg_int
+
+                # Create delta text showing progress toward weekly goal
+                if weekly_avg_int >= 5:
+                    delta_text = "🎯 Goal achieved!"
+                else:
+                    delta_text = f"{workouts_to_goal} more to reach goal"
 
                 st.metric(
-                    "Weekly Avg (4wks)",
-                    progress_toward_goal,
-                    help=f"{goal_status} | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week"
+                    "Weekly Avg Workouts",
+                    weekly_avg_int,
+                    delta=delta_text,
+                    help=f"Rolling 4 weeks average | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week"
                 )
 
             with col4:
@@ -1106,12 +1112,12 @@ def main():
                 )
 
             with col5:
-                # This year stats combined
+                # Year-to-date workouts with YOY comparison
                 st.metric(
-                    f"{current_year} Total",
-                    f"{this_year_count} workouts",
-                    delta=f"{this_year_hours:.0f}h total" if this_year_hours > 0 else None,
-                    help=f"This year: {this_year_count} workouts ({this_year_hours:.0f}h) | Last year: {last_year_count} workouts ({last_year_hours:.0f}h)"
+                    "YTD # of Workouts",
+                    this_year_count,
+                    delta=f"{yoy_count_delta:+d} vs {last_year}" if last_year_count > 0 else None,
+                    help=f"Year-to-date: {this_year_count} workouts ({this_year_hours:.0f}h) | {last_year}: {last_year_count} workouts ({last_year_hours:.0f}h)"
                 )
     
             st.divider()
