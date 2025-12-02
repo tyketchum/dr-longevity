@@ -718,6 +718,13 @@ def main():
         weekly_avg = len(recent_activities) / 4 if not recent_activities.empty else 0
         weekly_avg_hours = recent_activities['duration_minutes'].sum() / 60 / 4 if not recent_activities.empty else 0
 
+        # Calculate previous 4-week period for comparison (days 29-56)
+        previous_period_start = datetime.now() - timedelta(days=56)
+        previous_period_end = datetime.now() - timedelta(days=28)
+        previous_activities = activities_df[(activities_df['date'] >= previous_period_start) & (activities_df['date'] < previous_period_end)]
+        previous_weekly_avg_hours = previous_activities['duration_minutes'].sum() / 60 / 4 if not previous_activities.empty else 0
+        weekly_hours_delta = weekly_avg_hours - previous_weekly_avg_hours
+
         # Calculate year-over-year metrics
         current_year = datetime.now().year
         last_year = current_year - 1
@@ -1104,11 +1111,12 @@ def main():
                 )
 
             with col4:
-                # Weekly average hours
+                # Weekly average hours with period-over-period comparison
                 st.metric(
                     "Weekly Avg Hours",
                     f"{weekly_avg_hours:.1f}h",
-                    help=f"Average training time per week over last 4 weeks"
+                    delta=f"{weekly_hours_delta:+.1f}h vs prior 4wks" if previous_weekly_avg_hours > 0 else None,
+                    help=f"Current period: {weekly_avg_hours:.1f}h/week | Prior period: {previous_weekly_avg_hours:.1f}h/week | Trend shows training volume change"
                 )
 
             with col5:
