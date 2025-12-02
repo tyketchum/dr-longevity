@@ -932,12 +932,21 @@ def main():
                 # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
                 anthropic_api_key = None
                 try:
-                    anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
-                except (KeyError, FileNotFoundError, AttributeError):
-                    # Secrets not found, try environment variable
+                    # Try direct access to secrets
+                    if hasattr(st, 'secrets') and 'ANTHROPIC_API_KEY' in st.secrets:
+                        anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
+                except Exception:
+                    pass
+
+                # Fall back to environment variable if not in secrets
+                if not anthropic_api_key:
                     anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
-    
+
+                # Clean up the key (remove quotes and whitespace if present)
                 if anthropic_api_key:
+                    anthropic_api_key = str(anthropic_api_key).strip().strip('"').strip("'")
+
+                if anthropic_api_key and len(anthropic_api_key) > 20:
                     if ftp or current_vo2max:
                         # Has API key AND fitness data - show recommendations
                         with st.expander("🤖 AI Training Recommendations", expanded=False):
