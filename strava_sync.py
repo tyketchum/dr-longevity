@@ -43,10 +43,10 @@ def get_strava_access_token():
     response = requests.post(
         'https://www.strava.com/oauth/token',
         data={
-            'client_id': STRAVA_CLIENT_ID,
-            'client_secret': STRAVA_CLIENT_SECRET,
+            'client_id': str(STRAVA_CLIENT_ID),
+            'client_secret': str(STRAVA_CLIENT_SECRET),
             'grant_type': 'refresh_token',
-            'refresh_token': STRAVA_REFRESH_TOKEN
+            'refresh_token': str(STRAVA_REFRESH_TOKEN)
         }
     )
 
