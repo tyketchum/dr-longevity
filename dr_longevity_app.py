@@ -929,21 +929,54 @@ def main():
     
             # AI-Powered Training Recommendations
             if ANTHROPIC_AVAILABLE:
-                # Try Streamlit secrets first (from [anthropic] section), then fall back to env vars
+                # Try multiple approaches to get the API key
                 anthropic_api_key = None
+                debug_messages = []
+
+                # Method 1: Try [anthropic] section in secrets
                 try:
                     if hasattr(st, 'secrets') and 'anthropic' in st.secrets:
-                        anthropic_api_key = st.secrets['anthropic']['api_key']
-                except (KeyError, TypeError, AttributeError):
-                    pass
+                        anthropic_api_key = st.secrets['anthropic'].get('api_key')
+                        if anthropic_api_key:
+                            debug_messages.append("✓ Found key in [anthropic] section")
+                        else:
+                            debug_messages.append("✗ [anthropic] section exists but 'api_key' not found")
+                except (KeyError, TypeError, AttributeError) as e:
+                    debug_messages.append(f"✗ Error accessing [anthropic] section: {e}")
 
-                # Fall back to environment variable if not in secrets
+                # Method 2: Try top-level ANTHROPIC_API_KEY in secrets
+                if not anthropic_api_key:
+                    try:
+                        if hasattr(st, 'secrets') and 'ANTHROPIC_API_KEY' in st.secrets:
+                            anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
+                            debug_messages.append("✓ Found key as top-level ANTHROPIC_API_KEY")
+                    except (KeyError, TypeError, AttributeError) as e:
+                        debug_messages.append(f"✗ Error accessing top-level ANTHROPIC_API_KEY: {e}")
+
+                # Method 3: Fall back to environment variable
                 if not anthropic_api_key:
                     anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+                    if anthropic_api_key:
+                        debug_messages.append("✓ Found key in environment variable")
+                    else:
+                        debug_messages.append("✗ No key found in environment variable")
 
                 # Clean up the key (remove quotes and whitespace if present)
                 if anthropic_api_key:
                     anthropic_api_key = str(anthropic_api_key).strip().strip('"').strip("'")
+                    debug_messages.append(f"✓ Key length: {len(anthropic_api_key)}")
+                else:
+                    if hasattr(st, 'secrets'):
+                        debug_messages.append(f"✗ Available secrets: {list(st.secrets.keys())}")
+                    else:
+                        debug_messages.append("✗ st.secrets not available")
+
+                # Show debug messages
+                for msg in debug_messages:
+                    if "✓" in msg:
+                        st.success(msg)
+                    elif "✗" in msg:
+                        st.warning(msg)
 
                 if anthropic_api_key and len(anthropic_api_key) > 20:
                     if ftp or current_vo2max:
