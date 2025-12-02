@@ -1097,18 +1097,22 @@ def main():
                 weekly_avg_int = int(round(weekly_avg))
                 workouts_to_goal = 5 - weekly_avg_int
 
-                # Create delta text showing progress toward weekly goal
-                if weekly_avg_int >= 5:
-                    delta_text = "🎯 Goal achieved!"
-                else:
-                    delta_text = f"{workouts_to_goal} more to reach goal"
+                # Show as progress bar toward goal instead of metric
+                st.markdown("**Weekly Avg Workouts**")
+                progress_pct = min(weekly_avg_int / 5, 1.0)
+                st.progress(progress_pct)
 
-                st.metric(
-                    "Weekly Avg Workouts",
-                    weekly_avg_int,
-                    delta=delta_text,
-                    help=f"Rolling 4 weeks average | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week"
-                )
+                # Show current progress text
+                if weekly_avg_int >= 5:
+                    st.markdown(f"<div style='text-align: center; color: #059669; font-size: 1.5rem; font-weight: bold;'>{weekly_avg_int}/5 🎯</div>", unsafe_allow_html=True)
+                    st.caption("Goal achieved!")
+                else:
+                    st.markdown(f"<div style='text-align: center; font-size: 1.5rem; font-weight: bold;'>{weekly_avg_int}/5</div>", unsafe_allow_html=True)
+                    st.caption(f"{workouts_to_goal} more to reach goal")
+
+                # Tooltip replacement
+                with st.expander("ℹ️", expanded=False):
+                    st.caption(f"Rolling 4 weeks average | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week")
 
             with col4:
                 # Weekly average hours with period-over-period comparison
