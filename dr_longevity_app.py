@@ -932,17 +932,45 @@ def main():
                 # Try Streamlit secrets first (for cloud), then fall back to env vars (for local)
                 anthropic_api_key = None
 
-                # Debug: Check what's in secrets
+                # Debug: Check what's in secrets - try multiple access methods
                 debug_info = []
                 try:
                     if hasattr(st, 'secrets'):
                         debug_info.append("✓ st.secrets exists")
+
+                        # Method 1: Direct key access
                         if 'ANTHROPIC_API_KEY' in st.secrets:
                             anthropic_api_key = st.secrets['ANTHROPIC_API_KEY']
-                            debug_info.append(f"✓ Found in secrets (length: {len(str(anthropic_api_key))})")
-                        else:
-                            debug_info.append("✗ ANTHROPIC_API_KEY not in st.secrets")
+                            debug_info.append(f"✓ Method 1: Found via ['ANTHROPIC_API_KEY']")
+
+                        # Method 2: Try as attribute
+                        if not anthropic_api_key:
+                            try:
+                                anthropic_api_key = st.secrets.ANTHROPIC_API_KEY
+                                debug_info.append(f"✓ Method 2: Found via .ANTHROPIC_API_KEY")
+                            except AttributeError:
+                                debug_info.append("✗ Method 2: Not accessible as attribute")
+
+                        # Method 3: Try .get()
+                        if not anthropic_api_key:
+                            try:
+                                anthropic_api_key = getattr(st.secrets, 'ANTHROPIC_API_KEY', None)
+                                if anthropic_api_key:
+                                    debug_info.append(f"✓ Method 3: Found via getattr()")
+                                else:
+                                    debug_info.append("✗ Method 3: getattr() returned None")
+                            except:
+                                debug_info.append("✗ Method 3: getattr() failed")
+
+                        if not anthropic_api_key:
+                            debug_info.append("✗ ANTHROPIC_API_KEY not found with any method")
                             debug_info.append(f"Available keys: {list(st.secrets.keys())}")
+                            # Try to show ALL attributes
+                            try:
+                                all_attrs = [attr for attr in dir(st.secrets) if not attr.startswith('_')]
+                                debug_info.append(f"All attributes: {all_attrs[:10]}")  # First 10
+                            except:
+                                pass
                     else:
                         debug_info.append("✗ st.secrets not available")
                 except Exception as e:
