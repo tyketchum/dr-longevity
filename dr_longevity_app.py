@@ -1097,22 +1097,30 @@ def main():
                 weekly_avg_int = int(round(weekly_avg))
                 workouts_to_goal = 5 - weekly_avg_int
 
-                # Show as progress bar toward goal instead of metric
-                st.markdown("**Weekly Avg Workouts**")
-                progress_pct = min(weekly_avg_int / 5, 1.0)
-                st.progress(progress_pct)
+                # Use a container with padding for better spacing
+                with st.container():
+                    # Title
+                    st.markdown("**Weekly Avg Workouts**")
 
-                # Show current progress text
-                if weekly_avg_int >= 5:
-                    st.markdown(f"<div style='text-align: center; color: #059669; font-size: 1.5rem; font-weight: bold;'>{weekly_avg_int}/5 🎯</div>", unsafe_allow_html=True)
-                    st.caption("Goal achieved!")
-                else:
-                    st.markdown(f"<div style='text-align: center; font-size: 1.5rem; font-weight: bold;'>{weekly_avg_int}/5</div>", unsafe_allow_html=True)
-                    st.caption(f"{workouts_to_goal} more to reach goal")
+                    # Add vertical spacing
+                    st.write("")
 
-                # Tooltip replacement
-                with st.expander("ℹ️", expanded=False):
-                    st.caption(f"Rolling 4 weeks average | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week")
+                    # Progress bar centered with padding
+                    col_spacer1, col_progress, col_spacer2 = st.columns([0.1, 1, 0.1])
+                    with col_progress:
+                        progress_pct = min(weekly_avg_int / 5, 1.0)
+                        st.progress(progress_pct)
+
+                    # Show current progress text (centered)
+                    if weekly_avg_int >= 5:
+                        st.markdown(f"<div style='text-align: center; color: #059669; font-size: 1.5rem; font-weight: bold; margin-top: 8px;'>{weekly_avg_int}/5 🎯</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align: center; color: #6b7280; font-size: 0.875rem;'>Goal achieved!</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='text-align: center; font-size: 1.5rem; font-weight: bold; margin-top: 8px;'>{weekly_avg_int}/5</div>", unsafe_allow_html=True)
+                        st.markdown(f"<div style='text-align: center; color: #6b7280; font-size: 0.875rem;'>{workouts_to_goal} more to reach goal</div>", unsafe_allow_html=True)
+
+                    # Add bottom padding for spacing from next column
+                    st.markdown("<div style='height: 10px;'></div>", unsafe_allow_html=True)
 
             with col4:
                 # Weekly average hours with period-over-period comparison
