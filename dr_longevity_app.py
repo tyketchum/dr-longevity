@@ -971,7 +971,13 @@ def main():
                     else:
                         debug_messages.append("✗ st.secrets not available")
 
-                # Show debug messages
+                # Show debug messages with detailed secrets inspection
+                if hasattr(st, 'secrets'):
+                    st.info(f"🔍 Debug: st.secrets sections = {list(st.secrets.keys())}")
+                    for section in st.secrets.keys():
+                        if section in ['anthropic', 'strava']:
+                            st.info(f"🔍 Debug: [{section}] contains keys = {list(st.secrets[section].keys())}")
+
                 for msg in debug_messages:
                     if "✓" in msg:
                         st.success(msg)
