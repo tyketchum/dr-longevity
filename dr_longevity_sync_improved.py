@@ -348,7 +348,7 @@ def sync_activities(garmin, supabase: Client, days=30):
     except Exception as e:
         print(f"❌ Error fetching activities: {str(e)}")
 
-def main():
+def main(days=None):
     """Main sync process"""
     print("=" * 50)
     print("🏃 Garmin Enhanced Data Sync Starting...")
@@ -373,9 +373,13 @@ def main():
     garmin = connect_to_garmin()
 
     # Sync data (default to all history - 20 years should cover any Garmin account)
-    days = int(os.getenv('SYNC_DAYS', 7300))  # 20 years default = ALL HISTORY
+    if days is None:
+        days = int(os.getenv('SYNC_DAYS', 7300))  # 20 years default = ALL HISTORY
 
-    print(f"\n📅 Syncing {days} days of data ({days/365:.1f} years) - FULL GARMIN HISTORY")
+    if days >= 365:
+        print(f"\n📅 Syncing {days} days of data ({days/365:.1f} years) - FULL GARMIN HISTORY")
+    else:
+        print(f"\n📅 Syncing last {days} days of data")
 
     # Sync daily metrics (with weight, HRV, training load)
     sync_daily_metrics(garmin, supabase, days)

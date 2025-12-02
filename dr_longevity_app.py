@@ -637,11 +637,11 @@ def main():
                 garmin_success = False
                 strava_success = False
 
-                # Sync Garmin data
+                # Sync Garmin data (last 7 days only for quick sync)
                 try:
-                    st.info("📡 Syncing Garmin data...")
+                    st.info("📡 Syncing Garmin data (last 7 days)...")
                     import dr_longevity_sync_improved
-                    dr_longevity_sync_improved.main()
+                    dr_longevity_sync_improved.main(days=7)
                     st.success("✅ Garmin data synced!")
                     garmin_success = True
                 except Exception as e:
