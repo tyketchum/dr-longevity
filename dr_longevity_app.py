@@ -929,22 +929,32 @@ def main():
     
             # AI-Powered Training Recommendations
             if ANTHROPIC_AVAILABLE:
+                # Debug: Show what's in secrets
+                st.info(f"Debug: Available secret keys: {list(st.secrets.keys()) if hasattr(st, 'secrets') else 'No secrets'}")
+                if hasattr(st, 'secrets') and 'anthropic' in st.secrets:
+                    st.info(f"Debug: Keys in [anthropic]: {list(st.secrets['anthropic'].keys())}")
+
                 # Try Streamlit secrets first (from [anthropic] section), then fall back to env vars
                 anthropic_api_key = None
                 try:
                     if hasattr(st, 'secrets') and 'anthropic' in st.secrets:
-                        anthropic_api_key = st.secrets['anthropic']['api_key']
-                        st.success(f"✓ Found API key in secrets (length: {len(str(anthropic_api_key))})")  # Temp debug
+                        if 'api_key' in st.secrets['anthropic']:
+                            anthropic_api_key = st.secrets['anthropic']['api_key']
+                            st.success(f"✓ Found API key in secrets")
+                        else:
+                            st.error(f"✗ 'api_key' not found in [anthropic] section")
+                    else:
+                        st.error("✗ [anthropic] section not found in secrets")
                 except (KeyError, TypeError, AttributeError) as e:
-                    st.error(f"✗ Error reading from [anthropic] section: {str(e)}")  # Temp debug
+                    st.error(f"✗ Error reading from [anthropic] section: {str(e)}")
 
                 # Fall back to environment variable if not in secrets
                 if not anthropic_api_key:
                     anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
                     if anthropic_api_key:
-                        st.info("✓ Found API key in environment")  # Temp debug
+                        st.info("✓ Found API key in environment")
                     else:
-                        st.warning("✗ No API key found in secrets or environment")  # Temp debug
+                        st.warning("✗ No API key found in secrets or environment")
 
                 # Clean up the key (remove quotes and whitespace if present)
                 if anthropic_api_key:
