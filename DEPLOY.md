@@ -1,58 +1,70 @@
 # Deploying to Streamlit Community Cloud 🚀
 
-Your Longevity App can be deployed for FREE on Streamlit Community Cloud!
+Your Dr. Longevity App is deployed at: **https://dr-longevity.streamlit.app**
 
-## Prerequisites
+## Current Deployment Status
 
-- GitHub account
-- Your Garmin Connect credentials
+- **Live URL**: https://dr-longevity.streamlit.app
+- **Repository**: tyketchum/dr-longevity
+- **Main File**: `dr_longevity_app.py`
+- **Auto-Deploy**: Enabled (on git push)
 
-## Step-by-Step Deployment
+## Important Deployment Notes
 
-### 1. Push Code to GitHub
+### ⚠️ Reboot After Deployment
 
-Make sure your code is pushed to a GitHub repository (public or private).
+**IMPORTANT**: After pushing code changes, the app often needs to be manually rebooted to work correctly:
 
-### 2. Go to Streamlit Community Cloud
+1. Go to https://share.streamlit.io
+2. Find your app in the dashboard
+3. Click the **"⋮"** menu (three dots)
+4. Select **"Reboot app"**
+5. Wait for reboot to complete (30 seconds)
 
-Visit: **https://share.streamlit.io**
+This ensures:
+- Secrets are reloaded properly
+- New code is fully initialized
+- Session state is reset
 
-### 3. Sign In
+### Secrets Configuration
 
-Click "Sign in with GitHub" and authorize Streamlit.
-
-### 4. Deploy Your App
-
-1. Click **"New app"**
-2. Select your repository: `Claude/Garmin` (or wherever this code is)
-3. Set the main file path: `streamlit_app.py`
-4. Click **"Deploy!"**
-
-### 5. Add Your Secrets
-
-Once deployed (or during deployment):
-
-1. Click on your app settings (⚙️ icon)
-2. Go to **"Secrets"**
-3. Add your Garmin credentials:
+Your app requires these secrets in Streamlit Cloud (Settings → Secrets):
 
 ```toml
+[supabase]
+url = "https://rqgmobpywjmvdofysqjq.supabase.co"
+key = "your_supabase_anon_key"
+
 [garmin]
-email = "your_email@example.com"
-password = "your_password"
+email = "your_garmin_email@example.com"
+password = "your_garmin_password"
+
+[strava]
+client_id = 167377
+client_secret = "your_strava_client_secret"
+refresh_token = "your_strava_refresh_token"
+
+[anthropic]
+api_key = "your_anthropic_api_key"
 ```
 
-4. Click "Save"
-
-### 6. That's It!
-
-Your app is now live! 🎉
-
-You'll get a URL like: `https://your-app-name.streamlit.app`
+**Note**: Use the section-based format above. Top-level keys may not load correctly.
 
 ## Updating Your App
 
-Whenever you push changes to GitHub, Streamlit will automatically redeploy your app!
+### Automatic Deployment
+
+Whenever you push changes to GitHub:
+1. Streamlit Cloud detects the changes
+2. Automatically redeploys the app
+3. **Remember to reboot if needed** (see above)
+
+### Manual Deployment
+
+To force a redeploy:
+1. Go to https://share.streamlit.io
+2. Click your app
+3. Click **"⋮"** → **"Reboot app"**
 
 ## Adding a Sync Button
 
