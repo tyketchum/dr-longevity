@@ -934,16 +934,23 @@ def main():
                 try:
                     if hasattr(st, 'secrets') and 'anthropic' in st.secrets:
                         anthropic_api_key = st.secrets['anthropic']['api_key']
-                except (KeyError, TypeError, AttributeError):
-                    pass
+                        st.success(f"✓ Found API key in secrets (length: {len(str(anthropic_api_key))})")  # Temp debug
+                except (KeyError, TypeError, AttributeError) as e:
+                    st.error(f"✗ Error reading from [anthropic] section: {str(e)}")  # Temp debug
 
                 # Fall back to environment variable if not in secrets
                 if not anthropic_api_key:
                     anthropic_api_key = os.getenv('ANTHROPIC_API_KEY')
+                    if anthropic_api_key:
+                        st.info("✓ Found API key in environment")  # Temp debug
+                    else:
+                        st.warning("✗ No API key found in secrets or environment")  # Temp debug
 
                 # Clean up the key (remove quotes and whitespace if present)
                 if anthropic_api_key:
+                    original_len = len(anthropic_api_key)
                     anthropic_api_key = str(anthropic_api_key).strip().strip('"').strip("'")
+                    st.info(f"✓ Cleaned key: {original_len} → {len(anthropic_api_key)} chars")  # Temp debug
 
                 if anthropic_api_key and len(anthropic_api_key) > 20:
                     if ftp or current_vo2max:
