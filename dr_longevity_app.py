@@ -1013,7 +1013,7 @@ def main():
                 else:
                     # No API key configured
                     with st.expander("🤖 AI Training Recommendations"):
-                        st.info("💡 **Want personalized AI-powered training recommendations?**\n\nAdd your Anthropic API key to `.env`:\n```\nANTHROPIC_API_KEY=your_key_here\n```\n\nGet a key at: https://console.anthropic.com/")
+                        st.info("💡 **Want personalized AI-powered training recommendations?**\n\nAdd your Anthropic API key to Streamlit Cloud secrets:\n\n1. Go to your app settings\n2. Add to secrets:\n```toml\nANTHROPIC_API_KEY = \"your_key_here\"\nAI_RECOMMENDATIONS_PASSWORD = \"your_password\"\n```\n\nGet a key at: https://console.anthropic.com/")
     
             st.divider()
     
@@ -1062,7 +1062,20 @@ def main():
     
             # Activity Summary (Secondary Metrics)
             st.header("📊 Activity Summary")
-    
+
+            # Add CSS to center metric labels
+            st.markdown("""
+                <style>
+                [data-testid="stMetricLabel"] {
+                    text-align: center;
+                    justify-content: center;
+                }
+                [data-testid="stMetricValue"] {
+                    text-align: center;
+                }
+                </style>
+            """, unsafe_allow_html=True)
+
             col1, col2, col3, col4, col5 = st.columns(5)
     
             with col1:
@@ -1099,8 +1112,8 @@ def main():
 
                 # Use a container with padding for better spacing
                 with st.container():
-                    # Title
-                    st.markdown("**Weekly Avg Workouts**")
+                    # Title (centered, not bold)
+                    st.markdown("<div style='text-align: center;'>Weekly Avg Workouts</div>", unsafe_allow_html=True)
 
                     # Add vertical spacing
                     st.write("")
