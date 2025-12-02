@@ -686,12 +686,37 @@ def main():
 
         # Calculate key stats
         total_activities = len(activities_df)
-        days_since_last = safe_int(metrics_df.iloc[0]['days_since_last_activity'] if not metrics_df.empty else None, 0)
-        current_streak = safe_int(metrics_df.iloc[0]['current_streak'] if not metrics_df.empty else None, 0)
+
+        # Calculate days since last workout (from activities, not database)
+        if not activities_df.empty:
+            last_workout_date = activities_df['date'].max()
+            days_since_last = (datetime.now() - last_workout_date).days
+        else:
+            days_since_last = 0
+
+        # Calculate current streak (consecutive days with workouts)
+        current_streak = 0
+        if not activities_df.empty:
+            # Sort by date descending
+            sorted_activities = activities_df.sort_values('date', ascending=False)
+            dates_with_activity = sorted_activities['date'].dt.date.unique()
+
+            # Check if there's an activity today or yesterday to start the streak
+            today = datetime.now().date()
+            yesterday = today - timedelta(days=1)
+
+            if today in dates_with_activity or yesterday in dates_with_activity:
+                # Count consecutive days backwards from today
+                check_date = today
+                while check_date in dates_with_activity or (check_date - timedelta(days=1)) in dates_with_activity:
+                    if check_date in dates_with_activity:
+                        current_streak += 1
+                    check_date = check_date - timedelta(days=1)
 
         # Calculate weekly average (last 28 days)
         recent_activities = activities_df[activities_df['date'] >= datetime.now() - timedelta(days=28)]
         weekly_avg = len(recent_activities) / 4 if not recent_activities.empty else 0
+        weekly_avg_hours = recent_activities['duration_minutes'].sum() / 60 / 4 if not recent_activities.empty else 0
 
         # Calculate year-over-year metrics
         current_year = datetime.now().year
@@ -1034,14 +1059,23 @@ def main():
             col1, col2, col3, col4, col5 = st.columns(5)
     
             with col1:
-                # Days since last workout - context about consistency
-                context_emoji = "🔥" if days_since_last == 0 else "✅" if days_since_last <= 2 else "⚠️" if days_since_last <= 7 else "❌"
+                # Days since last workout with color coding
+                if days_since_last <= 1:
+                    color = "🟢"
+                    status = "Excellent!"
+                elif days_since_last == 2:
+                    color = "🟡"
+                    status = "Good"
+                else:
+                    color = "🔴"
+                    status = "Time to get moving!"
+
                 st.metric(
                     "Days Since Last Workout",
-                    f"{days_since_last}",
-                    help=f"{context_emoji} 0-2 days: Excellent | 3-7 days: Good | 7+ days: Consider getting back on the bike!"
+                    f"{color} {days_since_last}",
+                    help=f"{status} | 0-1 days: 🟢 Excellent | 2 days: 🟡 Good | 3+ days: 🔴 Get back to it!"
                 )
-    
+
             with col2:
                 # Current streak - context about momentum
                 streak_status = "🔥 On fire!" if current_streak >= 7 else "💪 Building momentum" if current_streak >= 3 else "👍 Keep going"
@@ -1050,32 +1084,34 @@ def main():
                     f"{current_streak} days",
                     help=f"{streak_status} | Best practice: 3-4 workouts per week"
                 )
-    
+
             with col3:
-                # This year workouts - year-over-year comparison
+                # Weekly average workouts - whole number with goal context
+                weekly_avg_int = int(round(weekly_avg))
+                progress_toward_goal = f"{weekly_avg_int}/5 workouts"
+                goal_status = "🎯 Meeting goal!" if weekly_avg >= 5 else f"📈 {5 - weekly_avg_int} more to reach goal"
+
                 st.metric(
-                    f"{current_year} Workouts",
-                    this_year_count,
-                    delta=f"{yoy_count_delta:+d} vs {last_year}" if last_year_count > 0 else None,
-                    help=f"This year: {this_year_count} | Last year: {last_year_count} | Goal: Maintain or increase volume"
+                    "Weekly Avg (4wks)",
+                    progress_toward_goal,
+                    help=f"{goal_status} | Goal: 5 workouts/week | You're averaging {weekly_avg:.1f}/week"
                 )
-    
+
             with col4:
-                # Weekly average - context about training frequency
-                freq_status = "🎯 Optimal" if weekly_avg >= 3 else "📈 Room to grow" if weekly_avg >= 1 else "🚨 Too infrequent"
+                # Weekly average hours
                 st.metric(
-                    "Weekly Average (4wks)",
-                    f"{weekly_avg:.1f}",
-                    help=f"{freq_status} | Optimal: 3-5 workouts/week | Your current: {weekly_avg:.1f}/week"
+                    "Weekly Avg Hours",
+                    f"{weekly_avg_hours:.1f}h",
+                    help=f"Average training time per week over last 4 weeks"
                 )
-    
+
             with col5:
-                # This year hours - year-over-year comparison
+                # This year stats combined
                 st.metric(
-                    f"{current_year} Hours",
-                    f"{this_year_hours:.0f}h",
-                    delta=f"{yoy_hours_delta:+.0f}h vs {last_year}" if last_year_hours > 0 else None,
-                    help=f"This year: {this_year_hours:.0f}h | Last year: {last_year_hours:.0f}h | All-time: {total_duration / 60:.0f}h"
+                    f"{current_year} Total",
+                    f"{this_year_count} workouts",
+                    delta=f"{this_year_hours:.0f}h total" if this_year_hours > 0 else None,
+                    help=f"This year: {this_year_count} workouts ({this_year_hours:.0f}h) | Last year: {last_year_count} workouts ({last_year_hours:.0f}h)"
                 )
     
             st.divider()
