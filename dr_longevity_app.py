@@ -942,23 +942,8 @@ def main():
                         # Has API key AND fitness data - show recommendations
                         with st.expander("🤖 AI Training Recommendations", expanded=False):
                             st.markdown("**Get personalized recommendations to improve your metrics**")
-    
-                            # Check authentication for AI recommendations
-                            try:
-                                ai_password = st.secrets['AI_RECOMMENDATIONS_PASSWORD']
-                            except (KeyError, FileNotFoundError, AttributeError):
-                                ai_password = os.getenv('AI_RECOMMENDATIONS_PASSWORD')
-                            if ai_password and not st.session_state.get('ai_authenticated'):
-                                # Show login form
-                                with st.form("ai_login_form"):
-                                    password_input = st.text_input("Password", type="password", help="Enter password to generate AI recommendations")
-                                    if st.form_submit_button("Unlock AI Recommendations"):
-                                        if password_input == ai_password:
-                                            st.session_state['ai_authenticated'] = True
-                                            st.rerun()
-                                        else:
-                                            st.error("Incorrect password")
-                            elif st.button("Generate Recommendations", use_container_width=True):
+
+                            if st.button("Generate Recommendations", use_container_width=True):
                                 with st.spinner("Analyzing your training data..."):
                                     try:
                                         client = Anthropic(api_key=anthropic_api_key)
