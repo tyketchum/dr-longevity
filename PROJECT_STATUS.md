@@ -1,5 +1,5 @@
 # Dr. Longevity - Project Status
-**Last Updated**: December 2, 2025
+**Last Updated**: December 3, 2025
 
 ## 🌐 Live Deployment
 
@@ -112,22 +112,37 @@
 
 ## 🎯 Recent Updates (This Session)
 
-### AI Recommendations Enhancement
+### Duplicate Activity Removal (December 3, 2025 - Evening)
+- **Issue**: December 2, 2025 cycling workout appeared twice in dashboard
+  - Generic "Cycling" activity from Garmin (ID: 21160832655)
+  - "60 min Power Zone Endurance Ride with Christian Vande Velde" from Strava/Peloton
+- **Resolution Process**:
+  1. Deleted duplicate activity from Garmin Connect using `garmin.delete_activity()`
+  2. Ran sync to update Supabase (`dr_longevity_sync_improved.py`)
+  3. Manually deleted record from Supabase database (sync doesn't auto-remove deleted activities)
+  4. Verified only Peloton class remains in database
+- **Key Learning**: Sync scripts only add/update activities, they don't remove deleted activities from Supabase
+- **Documentation**: Added duplicate removal procedures to SYNC_NOTES.md
+
+### Data Sync Configuration Fix (December 3, 2025 - Earlier)
+- **Fixed Duplicate Activities**: Resolved issue where Peloton rides appeared twice in dashboard
+- **Sync Direction Configured**: Set Garmin ↔ Strava to one-way sync (Garmin → Strava only)
+  - Garmin Connect → Strava: ✅ ON (Activities)
+  - Strava → Garmin Connect: ❌ OFF (Training & Courses disabled)
+- **Removed Duplicates**: Deleted 2 duplicate "Cycling" records that came from Strava → Garmin sync
+- **Data Flow Now**:
+  - Peloton → Strava (with full ride details) ✅
+  - Garmin devices → Garmin Connect → Strava ✅
+  - App pulls from both Garmin API and Strava API independently ✅
+  - No more duplicates from bidirectional sync ✅
+
+### Previous Session: AI Recommendations Enhancement (December 2, 2025)
 - Fixed API key detection (supports multiple secret formats)
 - Made recommendations collapsible with expander
 - Moved download buttons to top of recommendations
 - Used session state to persist recommendations after download
 - Removed extra white space between sections
-
-### UX Improvements
-- Removed debug messages from production
-- Clean, professional interface
-- Better error handling for API key issues
-
-### Bug Fixes
-- Fixed Streamlit secrets detection (section-based vs top-level keys)
-- Resolved deployment issues requiring manual reboot
-- Fixed download buttons causing recommendations to disappear
+- Clean, professional interface with better error handling
 
 ## ⚠️ Known Issues & Notes
 
@@ -194,4 +209,4 @@
 
 **Status**: ✅ Production-ready and fully deployed
 **Maintainer**: Tyler Ketchum
-**Last Session**: December 2, 2025 - AI recommendations UX improvements
+**Last Session**: December 3, 2025 - Removed duplicate cycling activity from Dec 2, 2025 dashboard

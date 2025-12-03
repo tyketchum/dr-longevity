@@ -1,5 +1,34 @@
 # Dr. Longevity Sync Scripts
 
+## 🔄 Sync Configuration (IMPORTANT)
+
+### Data Flow
+To prevent duplicate activities, the sync is configured as follows:
+
+**Garmin Connect ↔ Strava Configuration:**
+- ✅ **Garmin → Strava**: ON (Activities)
+  - Configured in Garmin Connect → Settings → Connected Apps → Strava
+  - Sends Garmin watch/bike computer activities to Strava
+- ❌ **Strava → Garmin**: OFF (Training & Courses disabled)
+  - Configured in Garmin Connect → Settings → Connected Apps → Strava → Data Sharing
+  - Prevents Peloton rides from syncing back to Garmin Connect and creating duplicates
+
+**Complete Data Flow:**
+1. **Peloton → Strava** (via Peloton's native integration)
+2. **Garmin devices → Garmin Connect → Strava** (one-way sync)
+3. **Dr. Longevity App:**
+   - Pulls from Garmin Connect API via `dr_longevity_sync_improved.py`
+   - Pulls from Strava API via `strava_sync.py`
+   - Shows Peloton rides with full details from Strava
+   - Shows Garmin activities from Garmin Connect
+
+### Why This Configuration?
+- **No Duplicates**: Peloton rides stay in Strava only, not duplicated in Garmin Connect
+- **Full Details**: Peloton ride names and details come directly from Strava
+- **Garmin Data**: Watch/bike computer activities still sync to Strava for social features
+
+---
+
 ## ✅ RECOMMENDED: dr_longevity_sync_improved.py
 
 This is the **comprehensive sync script** that captures all available data from Garmin API.
@@ -149,3 +178,30 @@ Based on 8 power activities:
 
 ### Missing data (None values):
 ✅ Expected - Garmin API doesn't have all data for Strava-synced activities
+
+### Duplicate Activities:
+If duplicate activities appear (e.g., same workout showing as both generic "Cycling" from Garmin and full name from Strava):
+
+**1. Delete from Garmin Connect:**
+```python
+from garminconnect import Garmin
+garmin = Garmin(email, password)
+garmin.login()
+garmin.delete_activity(ACTIVITY_ID)
+```
+
+**2. Delete from Supabase database:**
+```python
+from supabase import create_client
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase.table('activities').delete().eq('activity_id', ACTIVITY_ID).execute()
+```
+
+**3. Verify removal:**
+```python
+result = supabase.table('activities').select('*').eq('date', 'YYYY-MM-DD').execute()
+```
+
+**Note:** The sync scripts only add/update activities. They don't automatically remove activities deleted from Garmin Connect, so manual deletion from Supabase is required.
+
+**Example (2025-12-03):** Removed duplicate cycling activity from 12-02-2025. Generic "Cycling" (ID: 21160832655) from Garmin was deleted, keeping the Peloton class "60 min Power Zone Endurance Ride with Christian Vande Velde" from Strava.
